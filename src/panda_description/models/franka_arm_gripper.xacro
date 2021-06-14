@@ -1,0 +1,31 @@
+<?xml version='1.0' encoding='utf-8'?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="panda_arm_plus_own_gripper">
+
+  <xacro:arg name="x_init" default="-0.25" /> 
+  <xacro:arg name="y_init" default="-0.5" /> 
+  <xacro:arg name="z_init" default="0.0" /> 
+
+  <xacro:include filename="$(find panda_description)/models/panda_arm/panda_arm_gazebo.xacro" />
+  <!--xacro:panda_arm arm_id="panda_arm" xyz="9.5 -2 0" rpy="0 0 ${-pi/2}" model_extras="false"/-->
+  <xacro:panda_arm arm_id="panda_arm" xyz="$(arg x_init) $(arg y_init) $(arg z_init)" rpy="0 0 ${-pi/2}" model_extras="false"/>  <!-- xyz="$(arg x_init) $(arg y_init) $(arg z_init)" rpy="0 0 ${-pi/2}"  -->
+
+  
+  <!-- add gripper -->  
+
+
+  <xacro:include filename="$(find panda_description)/models/panda_gripper/panda_gripper_gazebo.xacro"/>
+  <xacro:panda_gripper ns="gripper" rpy="0 0 0" connected_to="panda_arm_link8" /> 
+
+
+
+     <!-- Joints Control in Gazebo -->
+
+  <gazebo>
+    <plugin name="gazebo_ros_control" filename="libgazebo_ros_control.so">
+      <robotSimType>gazebo_ros_control/DefaultRobotHWSim</robotSimType>
+      <legacyModeNS>true</legacyModeNS>
+    </plugin>
+  </gazebo>
+    
+  
+</robot>

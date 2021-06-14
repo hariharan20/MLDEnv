@@ -1,0 +1,45 @@
+ # Publish all joint states
+joint_state_controller:
+  type: "joint_state_controller/JointStateController"
+  publish_rate: 50
+
+
+# Control all joints
+arm_controller:
+  type: "arm_control/JointTrajectoryController"  # arm_control is a namespace defined in the src/joint/trajectory_controller.cpp
+  joints:
+  - panda_arm_joint1
+  - panda_arm_joint2
+  - panda_arm_joint3
+  - panda_arm_joint4
+  - panda_arm_joint5
+  - panda_arm_joint6
+  - panda_arm_joint7
+
+
+  gains:
+
+   panda_arm_joint1: {p: 1,  d: 0}
+   panda_arm_joint2: {p: 2,  d: 0}
+   panda_arm_joint3: {p: 1,  d: 0}
+   panda_arm_joint4: {p: 2,  d: 0}
+   panda_arm_joint5: {p: 1,  d: 0}
+   panda_arm_joint6: {p: 1,  d: 0}
+   panda_arm_joint7: {p: 1,  d: 0}
+
+
+
+hand_controller:
+    type: position_controllers/JointPositionController
+    joints:
+        - gripper_finger_joint1
+        - gripper_finger_joint2
+
+    gains:
+        gripper_finger_joint1: { p: 0.1, d: 0.0, i: 0, i_clamp: 1 }
+        gripper_finger_joint2: { p: 0.1, d: 0.0, i: 0, i_clamp: 1 }
+
+    state_publish_rate: 25
+
+
+

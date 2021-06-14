@@ -1,0 +1,6 @@
+<launch>
+
+  <node name="move_group_python_interface_promp" pkg="moveit_scripts" type="move_group_python_interface_promp.py" respawn="false" output="screen">
+  </node>
+
+</launch>
