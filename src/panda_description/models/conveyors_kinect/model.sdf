@@ -1,0 +1,117 @@
+<?xml version='1.0'?>
+<sdf version="1.4">
+<model name="Conveyors-Kinect">
+<static>false</static>
+  
+  <!-- workcell-assembly-v2 -->
+  <link name="Conveyor1">
+    <pose>0 0 0.07 0 0 0</pose>
+    <inertial>
+      <mass>13.55</mass>
+      <inertia><ixx>0.294</ixx><iyy>0.294</iyy><izz>0.023</izz><ixy>0</ixy><ixz>0</ixz><iyz>0</iyz></inertia>
+    </inertial>
+    <collision name="collision">
+      <geometry>
+          <mesh>
+            <uri>model://............................ .stl</uri>
+          </mesh>
+      </geometry>
+    </collision>
+    <visual name="visual">
+      <geometry>
+          <mesh>
+            <uri>model://....................  .stl</uri>
+          </mesh>
+      </geometry>
+    </visual>
+  </link>
+  
+
+  <!-- Top Kinect Camera -->
+  <link name="camera_link">
+	  
+    <pose>0.52 0.42 2.214 0 1.57 -1.57</pose>
+      <inertial>
+        <mass>0.1</mass>
+      </inertial>
+      <collision name="collision">
+        <geometry>
+          <box>
+            <size>0.073000 0.276000 0.072000</size>
+          </box>
+        </geometry>
+      </collision>
+      <visual name="visual">
+        <geometry>
+          <mesh>
+            <uri>model://kinect/meshes/kinect.dae</uri>
+          </mesh>
+        </geometry>
+      </visual>
+      <sensor name="camera" type="depth">
+        <update_rate>20</update_rate>
+        <camera>
+          <horizontal_fov>1.047198</horizontal_fov>
+          <image>
+            <width>640</width>
+            <height>480</height>
+            <format>R8G8B8</format>
+          </image>
+          <clip>
+            <near>0.05</near>
+            <far>3</far>
+          </clip>
+        </camera>
+        <plugin name="camera_plugin" filename="libgazebo_ros_openni_kinect.so">
+          <baseline>0.2</baseline>
+          <alwaysOn>true</alwaysOn>
+          <!-- Keep this zero, update_rate in the parent <sensor> tag
+            will control the frame rate. -->
+          <updateRate>0.0</updateRate>
+          <cameraName>kinect_camera_ir</cameraName>
+          <imageTopicName>/kinect_camera/depth/image_raw</imageTopicName>
+          <cameraInfoTopicName>/kinect_camera/depth/camera_info</cameraInfoTopicName>
+          <depthImageTopicName>/kinect_camera/depth/depth_image_raw</depthImageTopicName>
+          <depthImageInfoTopicName>/kinect_camera/depth/camera_info</depthImageInfoTopicName>
+          <pointCloudTopicName>/kinect_camera/depth/points</pointCloudTopicName>
+          <frameName>camera_link</frameName>
+          <pointCloudCutoff>0.05</pointCloudCutoff>
+          <distortionK1>0</distortionK1>
+          <distortionK2>0</distortionK2>
+          <distortionK3>0</distortionK3>
+          <distortionT1>0</distortionT1>
+          <distortionT2>0</distortionT2>
+          <CxPrime>0</CxPrime>
+          <Cx>0</Cx>
+          <Cy>0</Cy>
+          <focalLength>0</focalLength>
+          <hackBaseline>0</hackBaseline>
+        </plugin>
+      </sensor>
+    
+  </link>	
+
+<link name="camera_link_optical">
+<pose>0.52 0.42 2.214 3.204 -0.075 3.2514</pose>
+</link>
+
+
+
+   <!-- generate an optical frame 
+      http://www.ros.org/reps/rep-0103.html#suffix-frames
+      so that ros and opencv can operate on the camera frame correctly 
+      -->
+  <joint name="camera_optical_joint" type="fixed">
+    <!-- these values have to be these values otherwise the gazebo camera
+        image won't be aligned properly with the frame it is supposedly
+        originating from -->
+    <pose> 0 0 0 -1.57 3.414 -1.57 </pose>
+    <parent>camera_link</parent>
+    <child>camera_link_optical</child>
+  </joint>
+
+  
+  
+  </model>
+  
+  </sdf>
