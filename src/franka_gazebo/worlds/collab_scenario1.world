@@ -13,8 +13,8 @@
       <pose>0 0 0 0 0 0</pose>
     </include>
     <include>
-    	<uri>model://conveyor-kinect</uri>
-      <name>conveyor-kinect</name>
+    	<uri>model://conveyors_kinect</uri>
+      <name>conveyos_kinect</name>
       <pose>0 0 0 0 0 0</pose>
     </include>
   </world>
