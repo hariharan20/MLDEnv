@@ -12,15 +12,16 @@ import indoor3d_util
 from sensor_msgs.msg import PointCloud2
 import pcl
 import ros_numpy
+from geometry_msgs.msg import Point
 count = 0
 parser = argparse.ArgumentParser()
 parser.add_argument('--gpu', type=int, default=0, help='GPU to use [default: GPU 0]')
 parser.add_argument('--batch_size', type=int, default=1, help='Batch Size during training [default: 1]')
 parser.add_argument('--num_point', type=int, default=4096, help='Point number [default: 4096]')
-parser.add_argument('--model_path', default='log/model.ckpt', help='model checkpoint file path')
-parser.add_argument('--dump_dir', default='log/dump', help='dump folder path')
-parser.add_argument('--output_filelist', default='log/output_filelist.txt', help='TXT filename, filelist, each line is an output for a room')
-parser.add_argument('--room_data_filelist', default='metal/area6_data_label.txt', help='TXT filename, filelist, each line is a test room data label file.')
+parser.add_argument('--model_path', default='/home/ajit/ur_ws/src/pointnet/src/pointnet/sem_seg/log/model.ckpt', help='model checkpoint file path')
+parser.add_argument('--dump_dir', default='/home/ajit/ur_ws/src/pointnet/src/pointnet/sem_seg/log/dump', help='dump folder path')
+parser.add_argument('--output_filelist', default='/home/ajit/ur_ws/src/pointnet/src/pointnet/sem_seg/log/output_filelist.txt', help='TXT filename, filelist, each line is an output for a room')
+parser.add_argument('--room_data_filelist', default='/home/ajit/ur_ws/src/pointnet/src/pointnet/sem_seg/metal/area6_data_label.txt', help='TXT filename, filelist, each line is a test room data label file.')
 parser.add_argument('--no_clutter', action='store_true', help='If true, donot count the clutter class')
 parser.add_argument('--visu', action='store_true', help='Whether to output OBJ file for prediction visualization.')
 FLAGS = parser.parse_args()
@@ -40,7 +41,7 @@ NUM_CLASSES = 13
 def log_string(out_str):
     LOG_FOUT.write(out_str+'\n')
     LOG_FOUT.flush()
-    print(out_str)
+    #print(out_str)
 
 
 def eval_one_epoch(sess, ops, room_path, out_data_label_filename, out_gt_label_filename):
@@ -70,7 +71,7 @@ def eval_one_epoch(sess, ops, room_path, out_data_label_filename, out_gt_label_f
     
     file_size = current_data.shape[0]
     num_batches = file_size // BATCH_SIZE
-    print(file_size)
+    #print(file_size)
     x = []
     y = []
     z = []
@@ -131,17 +132,18 @@ def eval_one_epoch(sess, ops, room_path, out_data_label_filename, out_gt_label_f
     x = np.array(x)
     predicted  = np.zeros((x.shape[0] , 6))
     predicted  = np.zeros(x.shape[0], dtype=[('x', np.float32),('y', np.float32),('z', np.float32),('I', np.int32)])
-    print(x.shape)
+    #print(x.shape)
+    
     predicted_msg = PointCloud2()
-    predicted['x'] = x
-    predicted['y'] = np.array(y)
-    predicted['z'] = np.array(z)
+    predicted['x'] = x + min_x
+    predicted['y'] = np.array(y) + min_y
+    predicted['z'] = np.array(z) + min_z
     predicted['I'] = np.array(I)
     predicted_msg = ros_numpy.msgify(PointCloud2, predicted)
-    predicted_msg.header.frame_id = 'predicted_pointnet'
+    predicted_msg.header.frame_id = 'camera_link'
     pub = rospy.Publisher("predicted_topic", PointCloud2, queue_size=10)
     pub.publish(predicted_msg)
-    rospy.loginfo("Msg Published")
+    rospy.loginfo("Predicted PointCloud Published")
     
     
     
@@ -153,17 +155,24 @@ def eval_one_epoch(sess, ops, room_path, out_data_label_filename, out_gt_label_f
     return total_correct, total_seen
 
 
-
+def callback(data):
+    global min_x 
+    global min_y 
+    global min_z 
+    min_x = data.x
+    min_y = data.y
+    min_z = data.z
 
 
 def talker():
     with tf.Graph().as_default():
     	  rospy.init_node("Predictor")
-    	  count = 0
+    	  #count = 0
     	  rate = rospy.Rate(10)
+          sub = rospy.Subscriber("/MinPoint" , Point , callback)
     	  is_training = False
-    	  rospy.loginfo("count")
-    	  rospy.loginfo(count)
+    	  #rospy.loginfo("count")
+    	  #rospy.loginfo(count)
     	  with tf.device('/gpu:'+str(GPU_INDEX)):
             pointclouds_pl, labels_pl = placeholder_inputs(BATCH_SIZE, NUM_POINT)
             is_training_pl = tf.placeholder(tf.bool, shape=())
@@ -204,7 +213,7 @@ def talker():
         		out_data_label_filename = os.path.join(DUMP_DIR, out_data_label_filename)
         		out_gt_label_filename = os.path.basename(room_path)[:-4] + '_gt.txt'
         		out_gt_label_filename = os.path.join(DUMP_DIR, out_gt_label_filename)
-        		print(room_path, out_data_label_filename)
+        		#print(room_path, out_data_label_filename)
         		a, b = eval_one_epoch(sess, ops, room_path, out_data_label_filename, out_gt_label_filename)
         		total_correct += a
         		total_seen += b
@@ -215,8 +224,11 @@ def talker():
     	  LOG_FOUT.close()
 
 if __name__=='__main__':
-	try:
-		talker()
-	except rospy.ROSInterruptException:
+    try:
+        global min_x
+        global min_y
+        global min_z
+        talker()
+    except rospy.ROSInterruptException:
 		pass
 
