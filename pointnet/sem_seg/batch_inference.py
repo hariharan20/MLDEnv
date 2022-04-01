@@ -13,6 +13,7 @@ from sensor_msgs.msg import PointCloud2
 import pcl
 import ros_numpy
 from geometry_msgs.msg import Point
+import numpy as np
 count = 0
 parser = argparse.ArgumentParser()
 parser.add_argument('--gpu', type=int, default=0, help='GPU to use [default: GPU 0]')
@@ -58,8 +59,8 @@ def eval_one_epoch(sess, ops, room_path, out_data_label_filename, out_gt_label_f
     fout_data_label = open(out_data_label_filename, 'w')
     fin_data_label = open(out_data_label_filename, 'r')
     fout_gt_label = open(out_gt_label_filename, 'w')
-    
-    current_data, current_label = indoor3d_util.room2blocks_wrapper_normalized(room_path, NUM_POINT)
+    current_data, current_label = indoor3d_util.room2blocks_plus_normalized(array_pcd, NUM_POINT, 1.0, 1.0,False, None, 1)
+    #current_data, current_label = indoor3d_util.room2blocks_wrapper_normalized(room_path, NUM_POINT)
     current_data = current_data[:,0:NUM_POINT,:]
     current_label = np.squeeze(current_label)
     # Get room dimension..
@@ -76,7 +77,7 @@ def eval_one_epoch(sess, ops, room_path, out_data_label_filename, out_gt_label_f
     y = []
     z = []
     I = []
-    
+
     for batch_idx in range(num_batches):
         start_idx = batch_idx * BATCH_SIZE
         end_idx = (batch_idx+1) * BATCH_SIZE
@@ -153,7 +154,14 @@ def eval_one_epoch(sess, ops, room_path, out_data_label_filename, out_gt_label_f
         fout.close()
         fout_gt.close()
     return total_correct, total_seen
-
+def CB_array_pcd(data):
+    global array_pcd
+    np_array_pcd = ros_numpy.numpify(data)
+    array_pcd = np.zeros((18000 , 4))
+    array_pcd[: , 0] = np_array_pcd['x']
+    array_pcd[: , 1] = np_array_pcd['y']
+    array_pcd[:, 2] = np_array_pcd['z']
+    
 
 def callback(data):
     global min_x 
@@ -168,8 +176,10 @@ def talker():
     with tf.Graph().as_default():
     	  rospy.init_node("Predictor")
     	  #count = 0
-    	  rate = rospy.Rate(10)
+    	  #rate = rospy.Rate(10)
           sub = rospy.Subscriber("/MinPoint" , Point , callback)
+          # TRIALS
+          sub_array_pcd = rospy.Subscriber("/array_pcd" , PointCloud2, CB_array_pcd)
     	  is_training = False
     	  #rospy.loginfo("count")
     	  #rospy.loginfo(count)
@@ -220,7 +230,7 @@ def talker():
         		fout_out_filelist.write(out_data_label_filename+'\n')
     		fout_out_filelist.close()
     		#log_string('all room eval accuracy: %f'% (total_correct / float(total_seen)))
-    		rate.sleep()
+    		#rate.sleep()
     	  LOG_FOUT.close()
 
 if __name__=='__main__':
@@ -228,7 +238,7 @@ if __name__=='__main__':
         global min_x
         global min_y
         global min_z
+        global array_pcd
         talker()
     except rospy.ROSInterruptException:
 		pass
-
