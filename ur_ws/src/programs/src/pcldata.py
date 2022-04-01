@@ -37,6 +37,20 @@ def callback(data):
     min_point.y = xyz_min[1]
     min_point.z = xyz_min[2]
     pub_min.publish(min_point)
+    #trial to automate without npy file generation using ros
+    #trial to automate without npy file generation using ros
+    array_pcd_msg = np.zeros((SAMPLE_NUMBER , 4))
+    array_pcd_msg = np.zeros(SAMPLE_NUMBER , dtype=[('x' , np.float32) ,('y' , np.float32), ('z' , np.float32), ('rgb' ,np.float32)])
+    array_pcd_msg['x'] = array_pcd[:, 0]
+    array_pcd_msg['y'] = array_pcd[:, 1]
+    array_pcd_msg['z'] = array_pcd[:, 2]
+    msg_array_pcd = PointCloud2()
+    msg_array_pcd = ros_numpy.msgify(PointCloud2 , array_pcd_msg)
+    msg_array_pcd.header.frame_id  = "camera_link"   
+    pub_array_pcd = rospy.Publisher("array_pcd" , PointCloud2 , queue_size=10)
+    pub_array_pcd.publish(msg_array_pcd)
+
+    # CODE ABOVE THIS TILL ARRAY_PCD_MSG IS ONLY FOR TRIALS
     
     
     live_file_name = '/home/ajit/ur_ws/src/pointnet/src/pointnet/data/lincoln_live/Area_1_scene_1.npy'
