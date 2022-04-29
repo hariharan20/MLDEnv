@@ -83,7 +83,7 @@ class HARI_RL():
 		self.min_dist = np.amin(self.dist_data)
 		#self.obs_points_post_action = self.obs_points_post_action.reshape((self.obs_points_post_action.shape[0] * self.obs_points_post_action.shape[1]))
 	
-	def get_reward(self)
+	def get_reward(self):
 		#need to check on Sub Callback function types
 		self.obs_states_post_action_sub = rospy.Subscriber('/RL_States/Nearest_Obstaacles_States', PointCloud2 , cb_obs_states_post_action)
 		l = tf.TransformListener()
