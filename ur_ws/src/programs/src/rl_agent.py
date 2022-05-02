@@ -12,7 +12,7 @@ import ros_numpy
 from tensorflow.keras.optimizers import Adam
 import tensorflow.keras as keras
 import tf
-
+from memory import PPOMemory
 
 class HARI_RL():
 	def __init__(self):
@@ -35,8 +35,9 @@ class HARI_RL():
 		self.critic.compile(optimizer= Adam(learning_rate= self.alpha))
 		self.goal_weight = 1
 		self.obs_weight = 1
-		
-		
+		self.batch_size = 64
+		self.memory  = PPOMemory(self.batch_size)
+		self.n_epochs = 10
 		
 		
 	def stop_moving(self):
@@ -105,86 +106,81 @@ class HARI_RL():
 			self.reward = 0
 		
 		return self.reward
+	def on_shutdown(self):
+		self.stop_moving()
+		
+		
+	def store_transition(self , state , action , probs ,vals, reward , done):
+		self.memory.store_memory(state , action , probs , vals , reward , done)	
+		
+    	def learn(self):
+        	for _ in range(self.n_epochs):
+            		state_arr, action_arr, old_prob_arr, vals_arr,\
+                		reward_arr, dones_arr, batches = \
+                		self.memory.generate_batches()
 
+            		values = vals_arr
+            		advantage = np.zeros(len(reward_arr), dtype=np.float32)
 
+            		for t in range(len(reward_arr)-1):
+                		discount = 1
+                		a_t = 0
+                	for k in range(t, len(reward_arr)-1):
+                    		a_t += discount*(reward_arr[k] + self.gamma*values[k+1] * (
+                        		1-int(dones_arr[k])) - values[k])
+                    		discount *= self.gamma*self.gae_lambda
+                	advantage[t] = a_t
 
+            		for batch in batches:
+                		with tf.GradientTape(persistent=True) as tape:
+                    			states = tf.convert_to_tensor(state_arr[batch])
+                    			old_probs = tf.convert_to_tensor(old_prob_arr[batch])
+                    			actions = tf.convert_to_tensor(action_arr[batch])
 
+                    			probs = self.actor(states)
+                    			dist = tfp.distributions.Categorical(probs)
+                    			new_probs = dist.log_prob(actions)
 
+                    			critic_value = self.critic(states)
 
+                    			critic_value = tf.squeeze(critic_value, 1)
 
+                    			prob_ratio = tf.math.exp(new_probs - old_probs)
+                    			weighted_probs = advantage[batch] * prob_ratio
+                    			clipped_probs = tf.clip_by_value(prob_ratio,
+                                                     				1-self.policy_clip,
+                                                     				1+self.policy_clip)
+                    			weighted_clipped_probs = clipped_probs * advantage[batch]
+                    			actor_loss = -tf.math.minimum(weighted_probs,
+                                                  			weighted_clipped_probs)
+                    			actor_loss = tf.math.reduce_mean(actor_loss)
 
+                    			returns = advantage[batch] + values[batch]
+                    # critic_loss = tf.math.reduce_mean(tf.math.pow(
+                    #                                  returns-critic_value, 2))
+                    			critic_loss = keras.losses.MSE(critic_value, returns)
 
+                		actor_params = self.actor.trainable_variables
+                		actor_grads = tape.gradient(actor_loss, actor_params)
+                		critic_params = self.critic.trainable_variables
+                		critic_grads = tape.gradient(critic_loss, critic_params)
+                		self.actor.optimizer.apply_gradients(
+                        		zip(actor_grads, actor_params))
+                		self.critic.optimizer.apply_gradients(
+                        		zip(critic_grads, critic_params))
 
-
-
-
-
-def callback(data):
-	NUMBER_OF_ACTIONS = 10
-	ALPHA =  0.0003
-	np_data = ros_numpy.numpify(data)
-	points = np.zeros((np_data.shape[0] , 3))
-	points[ : , 0] = np_data['x']
-	points[: , 1 ]  = np_data['y']
-	points[: , 2] = np_data['z']
-	points = points.reshape((points.shape[0] * points.shape[1]))
-	other_agents_states = tflow.convert_to_tensor(points)
-	actor = ActorNetwork(NUMBER_OF_ACTIONS)
-	actor.compile(optimizer  = Adam(learning_rate=ALPHA)
-	critic = CriticNetwork()
-	critic.compile(optimizer = Adam(learning_rate=ALPHA)
+        	self.memory.clear_memory()
+		
+def start():
+	rospy.init_node("RL_Agent")
+	object_with_no_name = HARI_RL()
 	
-	probs = actor(other_agent_states)
-	dist = tfp.distribution.Categorical(probs)
-	action = dist.sample()
-	log_prob = dist.log_prob(action)
-	value = critic(other_agent_states)
-	
-	action = action.numpy()[0]
-	value = value.numpy()[0]
-	log_prob = log_prob.numpy()[0]
-	shoulder_pan_pub = rospy.Publisher('/shoulder_pan_joint_velocity_controller/command', Float64, queue_size = 10)
-	shoulder_lift_pub = rospy.Publisher('/shoulder_lift_joint_velocity_controller/command', Float64, queue_size= 10)
-	elbow_pub = rospy.Publisher('/elbow_joint_velocity_controller/command', Float64, queue_size = 10)
-	wrist_1_pub = rospy.Publisher('/wrist_1_joint_velocity_controller/command' , Float64, queue_size=10)
-	wrist_2_pub = rospy.Publisher('/wrist_2_joint_velocity_controller/command' , Float64 , queue_size= 10)
-	wrist_3_pub = rospy.Publisher('/wrist_3_joint_velocity_controller/command' , Float64 , queue_size=10)
-	
-	rate = rospy.Rate(0.5)
-	actions = [[-0.1 ,-0.1 ,-0.1],
-			[-0.1, -0.1,  0.1],
-			[-0.1, 0 , -0.1],
-			[-0.1, 0  , 0.1 ]]
-	#	selected_action = random.choice(actions)
-	# action = np.array(selected_action)
-	#selected_action = random.choice(actions)
-	selected_action = actions[action]
-	action = np.array(selected_action)
-	velocity = Float64()
-	velocity = 0
-	rospy.loginfo(action)
-	shoulder_pan_pub.publish(action[0])
-	shoulder_lift_pub.publish(action[1])
-	elbow_pub.publish(action[2])
-	wrist_1_pub.publish(velocity)
-	wrist_2_pub.publish(velocity)
-	wrist_3_pub.publish(velocity)
-	rospy.sleep(2)
-	l = tf.TransformListener()
-	l.waitForTransform("tool0" , "/box_link" , rospy.Time(0) , rospy.Duration(4.0))
-	pointstamped = PointStamped()
-	pointstamped.header.frame_id = "tool0"
-	pointstamped.header.stamp = rospy.Time(0)
-	pointstamped.point.x = 0.0
-	pointstamped.point.y = 0.0
-	pointstamped.point.z = 0.0
-	p = l.transformPoint("box_link" , pointstamped)
-	goal_dist = np.linalg.norm(np.array[p.point.x , p.point.y ,p.point.z])
-	
-	
-	
+
+
+
+
+
 
 if __name__=="__main__":
-	rospy.init_node("RL_Agent")
-	sub = rospy.Subscriber("/RL_States/Nearest_Obstacles_States" , PointCloud2 , callback)
+	start()
 	
