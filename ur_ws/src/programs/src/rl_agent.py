@@ -1,7 +1,7 @@
 #! /usr/bin/env python
 
 import rospy
-from sensor_msgs.msg import PointCloud2
+from sensor_msgs.msg import PointCloud2 , JointState
 from std_msgs.msg import Float64 , Int32
 import numpy as np
 from memory import PPOMemory
@@ -23,23 +23,33 @@ class HARI_RL():
 		self.wrist_1_pub = rospy.Publisher('/wrist_1_joint_velocity_controller/command' , Float64 , queue_size = 10)
 		self.wrist_2_pub = rospy.Publisher('/wrist_2_joint_velocity_controller/command' , Float64 , queue_size = 10)
 		self.wrist_3_pub = rospy.Publisher('/wrist_3_joint_velocity_controller/command' , Float64 , queue_size = 10)
-		self.obs_sub = rospy.Subscriber("/RL_States/Nearest_Obstacles_States" , PointCloud2 , cb_obs)
+		#self.obs_sub = rospy.Subscriber("/RL_States/Nearest_Obstacles_States" , PointCloud2 , self.cb_obs)
 		self.actions =[[-0.1 ,-0.1 ,-0.1],
 				[-0.1, -0.1,  0.1],
 				[-0.1, 0 , -0.1],
 				[-0.1, 0  , 0.1 ]]
 		n_actions = len(self.actions)
-		self.actor = ActorNetwork(n_action)
+		self.actor = ActorNetwork(n_actions)
 		self.critic = CriticNetwork()
+		self.alpha =0.5
 		self.actor.compile(optimizer =Adam(learning_rate = self.alpha))
 		self.critic.compile(optimizer= Adam(learning_rate= self.alpha))
 		self.goal_weight = 1
 		self.obs_weight = 1
 		self.batch_size = 64
 		self.memory  = PPOMemory(self.batch_size)
-		self.n_epochs = 10
-		
-		
+		self.n_epochs = 10		
+		self.robot_position = []
+		self.robot_velocity = []
+	def cb_get_states(self , data):
+		#rospy.loginfo(data.position)
+		self.robot_position  = np.array(data.position)#[1]
+		self.robot_velocity = np.array(data.velocity)#[1]
+	def get_states(self):
+		#rospy.wait_for
+		#rospy.Subscriber("joint_states" , JointState , self.cb_get_states)
+		self.robot_states  = rospy.wait_for_message("joint_states" , JointState )
+		self.robot_position = self.robot_states.position
 	def stop_moving(self):
 		self.shoulder_pan_pub.publish(0)
 		self.shoulder_lift_pub.publish(0)
@@ -48,7 +58,8 @@ class HARI_RL():
 		self.wrist_2_pub.publish(0)
 		self.wrist_3_pub.publish(0)
 	
-	def cb_obs(self, data):
+	def cb_obs(self):
+		data  = rospy.wait_for_message("/RL_States/Nearest_Obstacles_States" , PointCloud2)
 		np_data = ros_numpy.numpify(data)
 		self.points = np.zeros((np_data.shape[0] , 3))
 		self.points[ : , 0] = np_data['x']
@@ -86,7 +97,7 @@ class HARI_RL():
 	
 	def get_reward(self):
 		#need to check on Sub Callback function types
-		self.obs_states_post_action_sub = rospy.Subscriber('/RL_States/Nearest_Obstaacles_States', PointCloud2 , cb_obs_states_post_action)
+		self.obs_states_post_action_sub = rospy.Subscriber('/RL_States/Nearest_Obstacles_States', PointCloud2 , self.cb_obs_states_post_action)
 		l = tf.TransformListener()
 		l.waitForTransform("tool0" , "/box_link" , rospy.Time(0) , rospy.Duration(4.0))
 		pointstamped = Pointstamped()
@@ -112,7 +123,19 @@ class HARI_RL():
 		
 	def store_transition(self , state , action , probs ,vals, reward , done):
 		self.memory.store_memory(state , action , probs , vals , reward , done)	
-		
+	
+	def cb_robot_position(self, data):
+		self.position =  data.position
+	
+	def choose_action(self, state):
+		probs = self.actor(state)
+		dist  = tfp.ditribution.Categorical(probs)
+		action = dist.sample()
+		log_prob = dist.log_prob(action)
+		value = self.critic(state)
+		action = action.numpy()[0]
+		value = value.numpy()[0]
+		log_prob = log_prob.numpy()[0]
     	def learn(self):
         	for _ in range(self.n_epochs):
             		state_arr, action_arr, old_prob_arr, vals_arr,\
@@ -170,15 +193,30 @@ class HARI_RL():
                         		zip(critic_grads, critic_params))
 
         	self.memory.clear_memory()
-		
+        
+        def save_model(self):
+        	self.actor.save('actor')
+        	self.critic.save('critic')	
 def start():
 	rospy.init_node("RL_Agent")
-	object_with_no_name = HARI_RL()
-	
-
-
-
-
+	rl_obj = HARI_RL()
+	#best_score = -1
+	#n_games = 1
+	#for i in range(n_games):
+	#	states = 
+	#while not rospy.is_shutdown():
+	rl_obj.stop_moving()
+	#for _ in range(5):
+	rl_obj.get_states()
+	print(rl_obj.robot_position)
+	rl_obj.cb_obs()
+	print(self.points)
+	#	if  _ < 4:
+	#		rospy.spin()
+	#print(rl_obj.robot_position)
+		#rospy.loginfo(rl_obj.robot_position)
+		#rospy.loginfo(rl_obj.robot_position)
+		#print(rl_obj.robot_velocity)
 
 
 if __name__=="__main__":

@@ -7,7 +7,7 @@ import numpy as np
 from sklearn.cluster import DBSCAN
 import tf
 from geometry_msgs.msg import PointStamped, Point
-import moveit_commander as mc
+#import moveit_commander as mc
 from sensor_msgs.msg import JointState
 
 def dis_calc(listp , centre=[0 ,0, 0]):
@@ -16,7 +16,7 @@ def dis_calc(listp , centre=[0 ,0, 0]):
 	for i in range(listp.shape[0]):
 		dist.append(np.linalg.norm(centre - listp[i]))
 	dist = np.array(dist)
-    	return np.max(dist) , listp[np.where(dist==np.max(dist))]
+        return np.max(dist) , listp[np.where(dist==np.max(dist))]
 
 
 
@@ -28,21 +28,24 @@ def callback(data):
     # 50  = Tables
     # 100 = UR10
     # 150 = Obstacles
-    obs_points = np_data[np.where(np_data['I']==150)]
+    obs_points = np_data[np.where(np_data['I']==200)]
+    rospy.loginfo(obs_points.shape[0])
     points = np.zeros((obs_points.shape[0], 3))
-    
+    rospy.loginfo("data_recieved") 
     points[:,0] = obs_points['x']
     points[:,1] = obs_points['y']
     points[:,2] = obs_points['z']
     #rospy.loginfo(points.shape)
     clustering = DBSCAN(eps = 0.2).fit(points)
-    obs_points['I'] = clustering.labels_ + 1
+    obs_points['I'] = clustering.labels_
+    rospy.loginfo(obs_points['I'][5])
     #_, cluster_counts = np.unique(clustering.labels_)
     #rospy.loginfo(np.unique(clustering.labels_))
     obs_points_pc2 = PointCloud2()
     obs_points_pc2 = ros_numpy.msgify(PointCloud2 , obs_points)
     obs_points_pc2.header.frame_id = 'camera_link'
     NUMBER_CLUSTERS = len(np.unique(clustering.labels_))
+    rospy.loginfo(NUMBER_CLUSTERS)
     centres = np.zeros((NUMBER_CLUSTERS , 3)) #centres in camera frame
     centres_in_base_frame = np.zeros((NUMBER_CLUSTERS , 3))
     centres_in_wrist_frame = np.zeros((NUMBER_CLUSTERS , 3))
@@ -51,23 +54,27 @@ def callback(data):
     #centres_in_base_frame = np.zeros((NUMBER_CLUSTERS , 3))
     #centres_in_base_frame = np.zeros((NUMBER_CLUSTERS , 3))
     distances_of_obs = []
-    points_near_to_joints  = np.zeros((NUMBER_CLUSTERS,3 , 4))
-
-
+    NUMBER_POINTS = NUMBER_CLUSTERS *4
+    points_near_to_joints  = np.zeros((NUMBER_CLUSTERS , 3 , 4))
+    points_x = []
+    points_y =[]
+    points_z = []
+    intensity = []
+    rospy.loginfo("Data processing Initialized")
     for i in range(NUMBER_CLUSTERS):
-        
+        rospy.loginfo(i) 
         same_class_points_np = obs_points[np.where(obs_points['I'] == i)]
-        same_class_points = np.zeros((same_class_points_np.shape[0] , 3))
-        same_class_points[:,0] = same_class_points_np['x']
-        same_class_points[:,1] = same_class_points_np['y']
-        same_class_points[:,2] = same_class_points_np['z']
+	same_class_points = np.zeros((same_class_points_np.shape[0] , 3))
+	same_class_points[:,0] = same_class_points_np['x']
+	same_class_points[:,1] = same_class_points_np['y']
+	same_class_points[:,2] = same_class_points_np['z']
 	listener = tf.TransformListener()
 	listener.waitForTransform("/camera_link" , "/forearm_link", rospy.Time(0) , rospy.Duration( 4.0))
 	laser_point = PointStamped()
 	laser_point.point.x = 0
 	laser_point.point.y = 0
 	laser_point.point.z = 0
-
+	rospy.loginfo(same_class_points)
 	laser_point.header.frame_id = "/forearm_link"
 	p =  listener.transformPoint("/camera_link" , laser_point)
 	joint_origin_in_camera_frame = [p.point.x , p.point.y , p.point.z]
@@ -81,9 +88,12 @@ def callback(data):
 	p = listener.transformPoint("world" ,min_dist_point)
 	points_near_to_joints[i ,0 , 0] = p.point.x
 	points_near_to_joints[i, 1, 0 ] = p.point.y
-	points_near_to_joints[i ,2 , 0] = p.point.z 
+	points_near_to_joints[i ,2 , 0] = p.point.z
+	points_x.append(p.point.x)
+	points_y.append(p.point.y)
+	points_z.append(p.point.z)
+	intensity.append((10 * i) + 1)  
 	rospy.loginfo(points_near_to_joints[i , : , 0])	
-
 	
 	laser_point.header.frame_id = "/wrist_2_link"
 	listener.waitForTransform("/camera_link" , "/wrist_2_link", rospy.Time(0) , rospy.Duration( 4.0))
@@ -99,9 +109,12 @@ def callback(data):
 	points_near_to_joints[i ,0 , 1] = p.point.x
 	points_near_to_joints[i, 1,  1] = p.point.y
 	points_near_to_joints[i ,2 , 1] = p.point.z
+	points_x.append(p.point.x)
+	points_y.append(p.point.y)
+	points_z.append(p.point.z)
+	intensity.append((10*i) + 2)
 	rospy.loginfo(points_near_to_joints[i , : , 1])	
-	
-	laser_point.header.frame_id = "/wrist_1_link"
+	laser_point.header.frame_id = "/wrist_1_link"	
 	listener.waitForTransform("/camera_link" , "/wrist_1_link", rospy.Time(0) , rospy.Duration( 4.0))
 	p =  listener.transformPoint("/camera_link" , laser_point)
 	joint_origin_in_camera_frame = [p.point.x , p.point.y , p.point.z]
@@ -115,7 +128,11 @@ def callback(data):
 	points_near_to_joints[i ,0 , 2] = p.point.x
 	points_near_to_joints[i, 1,  2] = p.point.y
 	points_near_to_joints[i ,2 , 2] = p.point.z
-	rospy.loginfo(points_near_to_joints[i , : , 2])	
+	points_x.append(p.point.x)
+	points_y.append(p.point.y)
+	points_z.append(p.point.z)
+	intensity.append((10 * i ) + 3)
+	rospy.loginfo(points_near_to_joints[i , : , 2])			
 
 	laser_point.header.frame_id = "/tool0"
 	listener.waitForTransform("/camera_link" , "/tool0", rospy.Time(0) , rospy.Duration( 4.0))
@@ -131,19 +148,34 @@ def callback(data):
 	points_near_to_joints[i ,0 , 3] = p.point.x
 	points_near_to_joints[i, 1,  3] = p.point.y
 	points_near_to_joints[i ,2 , 3] = p.point.z
+	points_x.append(p.point.x)
+	points_y.append(p.point.y)
+	points_z.append(p.point.z)
+	intensity.append((10 * i ) + 4)
 	rospy.loginfo(points_near_to_joints[i , : , 3])
-	
-    group_name = "manipulator"
-    group = mc.MoveGroupCommander(group_name)
-    ur10_joint_states = JointState()
-    ur10_joint_states.position = group.get_current_joint_values()
-    pub_ur10 = rospy.Publisher("/RL_States/Robot_Joint_States" , JointState, queue_size=10)
-    pub_ur10.publish(ur10_joint_states) 
+    nearest_obs  = np.zeros((NUMBER_POINTS , 4))
+    nearest_obs  = np.zeros(NUMBER_POINTS , dtype=[('x' , np.float32), ('y', np.float32), ('z' , np.float32), ('intensity', np.float32)])
+    nearest_obs['x'] = points_near_to_joints[: , 0  ,:].reshape(NUMBER_POINTS)
+    nearest_obs['y'] = points_near_to_joints[: , 1 , :].reshape(NUMBER_POINTS)
+    nearest_obs['z'] = points_near_to_joints[: , 2 , :].reshape(NUMBER_POINTS)
+    nearest_obs['intensity'] = np.array(intensity)
+    nearest_obs_msg = PointCloud2()
+    nearest_obs_msg = ros_numpy.msgify(PointCloud2, nearest_obs)
+    nearest_obs_msg.header.frame_id = 'world'
+    pub_nearest_obs = rospy.Publisher("/RL_States/Nearest_Obstacles_States" , PointCloud2 , queue_size=10)
+    pub_nearest_obs.publish(nearest_obs_msg)
+    #group_name = "manipulator"
+    #group = mc.MoveGroupCommander(group_name)
+    #ur10_joint_states = JointState()
+    #ur10_joint_states.position = group.get_current_joint_values()
+    #pub_ur10 = rospy.Publisher("/RL_States/Robot_Joint_States" , JointState, queue_size=10)
+    #pub_ur10.publish(ur10_joint_states) 
 
 
 
 if __name__=="__main__":
     rospy.init_node("clusterer")
+    rospy.loginfo("Node Started")
     sub = rospy.Subscriber("/predicted_topic", PointCloud2, callback)
-
+    rospy.loginfo("Subscriber_started")
     rospy.spin()
