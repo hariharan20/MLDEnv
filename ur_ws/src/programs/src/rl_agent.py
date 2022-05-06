@@ -13,6 +13,8 @@ from tensorflow.keras.optimizers import Adam
 import tensorflow.keras as keras
 import tf
 from memory import PPOMemory
+from geometry_msgs.msg import PointStamped , Point
+
 
 class HARI_RL():
 	def __init__(self):
@@ -24,10 +26,10 @@ class HARI_RL():
 		self.wrist_2_pub = rospy.Publisher('/wrist_2_joint_velocity_controller/command' , Float64 , queue_size = 10)
 		self.wrist_3_pub = rospy.Publisher('/wrist_3_joint_velocity_controller/command' , Float64 , queue_size = 10)
 		#self.obs_sub = rospy.Subscriber("/RL_States/Nearest_Obstacles_States" , PointCloud2 , self.cb_obs)
-		self.actions =[[-0.1 ,-0.1 ,-0.1],
-				[-0.1, -0.1,  0.1],
-				[-0.1, 0 , -0.1],
-				[-0.1, 0  , 0.1 ]]
+		self.actions =[[-0.05 ,-0.05 ,-0.05],
+				[-0.05, -0.05,  0.05],
+				[-0.05, 0 , -0.05],
+				[-0.05, 0  , 0.05 ]]
 		n_actions = len(self.actions)
 		self.actor = ActorNetwork(n_actions)
 		self.critic = CriticNetwork()
@@ -95,7 +97,7 @@ class HARI_RL():
 		#self.obs_points_post_action[ : , 0] = np_data['x']
 		#self.obs_points_post_action[: , 1 ]  = np_data['y']
 		#self.obs_points_post_action[: , 2] = np_data['z']
-		self.dist_data = np_data['dist_5']
+		self.dist_data = np_data['distances']
 		self.min_dist = np.amin(self.dist_data)
 		#self.obs_points_post_action = self.obs_points_post_action.reshape((self.obs_points_post_action.shape[0] * self.obs_points_post_action.shape[1]))
 	
@@ -103,13 +105,13 @@ class HARI_RL():
 		
 		l = tf.TransformListener()
 		l.waitForTransform("tool0" , "/box_link" , rospy.Time(0) , rospy.Duration(4.0))
-		pointstamped = Pointstamped()
+		pointstamped = PointStamped()
 		pointstamped.header.frame_id = "tool0"
 		pointstamped.header.stamp = rospy.Time(0)
 		pointstamped.point.x = 0.0
 		pointstamped.point.y = 0.0
 		pointstamped.point.z = 0.0
-		p = l.tranformPoint("box_link" , pointstamped)
+		p = l.transformPoint("box_link" , pointstamped)
 		a = np.array([p.point.x , p.point.y , p.point.z])
 		self.dist_to_goal  = np.linalg.norm(a)
 		self.dist_to_goal_weighted = self.dist_to_goal * self.goal_weight
@@ -118,7 +120,7 @@ class HARI_RL():
 			self.reward = 1
 		else : 
 			self.reward = 0
-		rew  = "Reward is = " + self.reward
+		rew  = "Reward is = " + str(self.reward)
 		print(rew)
 		return self.reward
 	
