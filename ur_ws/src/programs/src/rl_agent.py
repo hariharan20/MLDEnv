@@ -34,6 +34,7 @@ class HARI_RL():
 		self.alpha =0.5
 		self.actor.compile(optimizer =Adam(learning_rate = self.alpha))
 		self.critic.compile(optimizer= Adam(learning_rate= self.alpha))
+		print("Compiled Both Actor and Critic")
 		self.goal_weight = 1
 		self.obs_weight = 1
 		self.batch_size = 64
@@ -49,7 +50,8 @@ class HARI_RL():
 		#rospy.wait_for
 		#rospy.Subscriber("joint_states" , JointState , self.cb_get_states)
 		self.robot_states  = rospy.wait_for_message("joint_states" , JointState )
-		self.robot_position = self.robot_states.position
+		self.robot_position = tflow.expand_dims(self.robot_states.position , 0)
+		print("updated the robot joint positions")
 	def stop_moving(self):
 		self.shoulder_pan_pub.publish(0)
 		self.shoulder_lift_pub.publish(0)
@@ -65,10 +67,10 @@ class HARI_RL():
 		self.points[ : , 0] = np_data['x']
 		self.points[: , 1 ]  = np_data['y']
 		self.points[: , 2] = np_data['z']
-		self.points = self.points.reshape((self.points.shape[0] * self.points.shape[1]))
-	
-	def get_current_obs_states(self):
-		return self.points
+		self.points = tflow.expand_dims(self.points , 0)
+		print(np_data.shape[0])
+		print("got the obs_points  and updated")
+		#self.points = self.points.reshape((self.points.shape[0] * self.points.shape[1]))
 	
 	def take_action(self , action_index):
 		velocity  = 0 # To be edited for more control over robot's eef
@@ -79,13 +81,15 @@ class HARI_RL():
 		self.wrist_1_pub.publish(velocity)
 		self.wrist_2_pub.publish(velocity)
 		self.wrist_3_pub.publish(velocity)	
-	
+		print("Action Executed")
+		print( self.selected_action)
 	def save_model(self):
 		rospy.loginfo("saving the trained model")
 		self.actor.save('actor')
 		self.critic.save('critic')
 	
-	def cb_obs_states_post_action(self, data):
+	def states_post_action(self):
+		data = rospy.wait_for_message("/RL_States/Nearest_Obstacles_States" , PointCloud2)
 		np_data = ros_numpy.numpify(data)
 		#self.obs_points_post_action = np.zeros((np_data.shape[0] , 3))
 		#self.obs_points_post_action[ : , 0] = np_data['x']
@@ -96,8 +100,7 @@ class HARI_RL():
 		#self.obs_points_post_action = self.obs_points_post_action.reshape((self.obs_points_post_action.shape[0] * self.obs_points_post_action.shape[1]))
 	
 	def get_reward(self):
-		#need to check on Sub Callback function types
-		self.obs_states_post_action_sub = rospy.Subscriber('/RL_States/Nearest_Obstacles_States', PointCloud2 , self.cb_obs_states_post_action)
+		
 		l = tf.TransformListener()
 		l.waitForTransform("tool0" , "/box_link" , rospy.Time(0) , rospy.Duration(4.0))
 		pointstamped = Pointstamped()
@@ -115,8 +118,10 @@ class HARI_RL():
 			self.reward = 1
 		else : 
 			self.reward = 0
-		
+		rew  = "Reward is = " + self.reward
+		print(rew)
 		return self.reward
+	
 	def on_shutdown(self):
 		self.stop_moving()
 		
@@ -127,15 +132,17 @@ class HARI_RL():
 	def cb_robot_position(self, data):
 		self.position =  data.position
 	
-	def choose_action(self, state):
-		probs = self.actor(state)
-		dist  = tfp.ditribution.Categorical(probs)
+	def choose_action(self, obs_state , self_state):
+		probs = self.actor(obs_state , self_state)
+		dist  = tfp.distributions.Categorical(probs)
 		action = dist.sample()
 		log_prob = dist.log_prob(action)
-		value = self.critic(state)
+		value = self.critic(obs_state , self_state)
 		action = action.numpy()[0]
 		value = value.numpy()[0]
 		log_prob = log_prob.numpy()[0]
+		print("Got the Action and Value")
+		return action , log_prob , value
     	def learn(self):
         	for _ in range(self.n_epochs):
             		state_arr, action_arr, old_prob_arr, vals_arr,\
@@ -200,24 +207,25 @@ class HARI_RL():
 def start():
 	rospy.init_node("RL_Agent")
 	rl_obj = HARI_RL()
-	#best_score = -1
-	#n_games = 1
-	#for i in range(n_games):
-	#	states = 
-	#while not rospy.is_shutdown():
 	rl_obj.stop_moving()
-	#for _ in range(5):
 	rl_obj.get_states()
-	print(rl_obj.robot_position)
 	rl_obj.cb_obs()
-	print(self.points)
-	#	if  _ < 4:
-	#		rospy.spin()
-	#print(rl_obj.robot_position)
-		#rospy.loginfo(rl_obj.robot_position)
-		#rospy.loginfo(rl_obj.robot_position)
-		#print(rl_obj.robot_velocity)
-
+	score = 0
+	n_steps = 0
+	best_score = -1
+	done = False
+	while not done:
+		rl_obj.get_states()
+		rl_obj.cb_obs()
+		action , prob , val = rl_obj.choose_action(rl_obj.points , rl_obj.robot_position)
+		rl_obj.take_action(action)
+		#rospy.sleep(2)
+		rl_obj.states_post_action()
+		rl_obj.get_reward()
+		n_steps  = n_steps + 1
+		score  = score + rl_obj.reward
+		#rl_obj.learn()
+		#rl_obj.save_models()
 
 if __name__=="__main__":
 	start()
