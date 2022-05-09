@@ -6,12 +6,12 @@ from std_msgs.msg import Float64 , Int32
 import numpy as np
 from memory import PPOMemory
 from networks import ActorNetwork, CriticNetwork
-import tensorflow as tflow
+import tensorflow as tf
 import tensorflow_probability as tfp 
 import ros_numpy
 from tensorflow.keras.optimizers import Adam
 import tensorflow.keras as keras
-import tf
+import tf as tframe
 from memory import PPOMemory
 from geometry_msgs.msg import PointStamped , Point
 
@@ -41,7 +41,10 @@ class HARI_RL():
 		self.obs_weight = 1
 		self.batch_size = 64
 		self.memory  = PPOMemory(self.batch_size)
-		self.n_epochs = 10		
+		self.n_epochs = 10	
+		self.gamma = 0.99
+		self.gae_lambda = 0.95
+		self.policy_clip = 0.2	
 		self.robot_position = []
 		self.robot_velocity = []
 	def cb_get_states(self , data):
@@ -52,7 +55,7 @@ class HARI_RL():
 		#rospy.wait_for
 		#rospy.Subscriber("joint_states" , JointState , self.cb_get_states)
 		self.robot_states  = rospy.wait_for_message("joint_states" , JointState )
-		self.robot_position = tflow.expand_dims(self.robot_states.position , 0)
+		self.robot_position = tf.expand_dims(self.robot_states.position , 0)
 		print("updated the robot joint positions")
 	def stop_moving(self):
 		self.shoulder_pan_pub.publish(0)
@@ -69,7 +72,7 @@ class HARI_RL():
 		self.points[ : , 0] = np_data['x']
 		self.points[: , 1 ]  = np_data['y']
 		self.points[: , 2] = np_data['z']
-		self.points = tflow.expand_dims(self.points , 0)
+		self.points = tf.expand_dims(self.points , 0)
 		print(np_data.shape[0])
 		print("got the obs_points  and updated")
 		#self.points = self.points.reshape((self.points.shape[0] * self.points.shape[1]))
@@ -103,7 +106,7 @@ class HARI_RL():
 	
 	def get_reward(self):
 		
-		l = tf.TransformListener()
+		l = tframe.TransformListener()
 		l.waitForTransform("tool0" , "/box_link" , rospy.Time(0) , rospy.Duration(4.0))
 		pointstamped = PointStamped()
 		pointstamped.header.frame_id = "tool0"
@@ -135,11 +138,14 @@ class HARI_RL():
 		self.position =  data.position
 	
 	def choose_action(self, obs_state , self_state):
-		probs = self.actor(obs_state , self_state)
+		a = []
+		a.append(obs_state)
+		a.append(self_state)
+		probs = self.actor(a)
 		dist  = tfp.distributions.Categorical(probs)
 		action = dist.sample()
 		log_prob = dist.log_prob(action)
-		value = self.critic(obs_state , self_state)
+		value = self.critic(a)
 		action = action.numpy()[0]
 		value = value.numpy()[0]
 		log_prob = log_prob.numpy()[0]
@@ -147,7 +153,7 @@ class HARI_RL():
 		return action , log_prob , value
     	def learn(self):
         	for _ in range(self.n_epochs):
-            		state_arr, action_arr, old_prob_arr, vals_arr,\
+            		obs_state_arr , self_state_arr, action_arr, old_prob_arr, vals_arr,\
                 		reward_arr, dones_arr, batches = \
                 		self.memory.generate_batches()
 
@@ -162,18 +168,23 @@ class HARI_RL():
                         		1-int(dones_arr[k])) - values[k])
                     		discount *= self.gamma*self.gae_lambda
                 	advantage[t] = a_t
-
-            		for batch in batches:
+                	#print("Batches = ")
+                	print(_)
+			#print(batches)
+            		for batch in range(1):
                 		with tf.GradientTape(persistent=True) as tape:
-                    			states = tf.convert_to_tensor(state_arr[batch])
+                    			obs_states = tf.convert_to_tensor(obs_state_arr[batch])
+                    			self_states = tf.convert_to_tensor(self_state_arr[batch])
+                    			a = []
+                    			a.append(obs_states)
+                    			a.append(self_states)
                     			old_probs = tf.convert_to_tensor(old_prob_arr[batch])
                     			actions = tf.convert_to_tensor(action_arr[batch])
-
-                    			probs = self.actor(states)
+                    			probs = self.actor(a)
                     			dist = tfp.distributions.Categorical(probs)
                     			new_probs = dist.log_prob(actions)
-
-                    			critic_value = self.critic(states)
+					print(actions)
+                    			critic_value = self.critic(a)
 
                     			critic_value = tf.squeeze(critic_value, 1)
 
@@ -202,10 +213,7 @@ class HARI_RL():
                         		zip(critic_grads, critic_params))
 
         	self.memory.clear_memory()
-        
-        def save_model(self):
-        	self.actor.save('actor')
-        	self.critic.save('critic')	
+        	
 def start():
 	rospy.init_node("RL_Agent")
 	rl_obj = HARI_RL()
@@ -216,7 +224,11 @@ def start():
 	n_steps = 0
 	best_score = -1
 	done = False
+	i = 0
 	while not done:
+		if i == 1 : 
+			done = True
+		i = i+1
 		rl_obj.get_states()
 		rl_obj.cb_obs()
 		action , prob , val = rl_obj.choose_action(rl_obj.points , rl_obj.robot_position)
@@ -224,10 +236,24 @@ def start():
 		#rospy.sleep(2)
 		rl_obj.states_post_action()
 		rl_obj.get_reward()
+		rl_obj.memory.store_memory(rl_obj.points , rl_obj.robot_position , action  , prob, val , rl_obj.reward , done)
 		n_steps  = n_steps + 1
 		score  = score + rl_obj.reward
 		#rl_obj.learn()
 		#rl_obj.save_models()
+
+	rl_obj.learn()
+	#save_trial = rl_obj.actor(rl_obj.points , rl_obj.robot_position)
+	a = []
+	a.append(rl_obj.points)
+	a.append(rl_obj.robot_position)
+	rl_obj.actor._set_inputs(a)
+	
+	rl_obj.actor.save('actor' , save_format ='tf')
+	save_trial_critic = rl_obj.critic(a)
+	rl_obj.critic._set_inputs(a)
+	rl_obj.critic.save('critic')
+	#print(rl_obj.actor(rl_obj.memory.obs_states[4] , rl_obj.memory.self_states[4]))
 
 if __name__=="__main__":
 	start()
