@@ -26,10 +26,12 @@ class HARI_RL():
 		self.wrist_2_pub = rospy.Publisher('/wrist_2_joint_velocity_controller/command' , Float64 , queue_size = 10)
 		self.wrist_3_pub = rospy.Publisher('/wrist_3_joint_velocity_controller/command' , Float64 , queue_size = 10)
 		#self.obs_sub = rospy.Subscriber("/RL_States/Nearest_Obstacles_States" , PointCloud2 , self.cb_obs)
-		self.actions =[[-0.05 ,-0.05 ,-0.05],
-				[-0.05, -0.05,  0.05],
-				[-0.05, 0 , -0.05],
-				[-0.05, 0  , 0.05 ]]
+		#self.actions =[[-0.05 ,-0.05 ,-0.05],
+		#		[-0.05, -0.05,  0.05],
+		#		[-0.05, 0 , -0.05],
+		#		[-0.05, 0  , 0.05 ]]
+		action_for_one_joint = np.linspace(-0.1  , 0.1 ,3)
+		self.actions = np.array(np.meshgrid(action_for_one_joint ,action_for_one_joint , action_for_one_joint , action_for_one_joint , action_for_one_joint ,action_for_one_joint)).T.reshape(-1 , 6)
 		n_actions = len(self.actions)
 		self.actor = ActorNetwork(n_actions)
 		self.critic = CriticNetwork()
@@ -83,9 +85,9 @@ class HARI_RL():
 		self.shoulder_pan_pub.publish(self.selected_action[0])
 		self.shoulder_lift_pub.publish(self.selected_action[1])
 		self.elbow_pub.publish(self.selected_action[2])
-		self.wrist_1_pub.publish(velocity)
-		self.wrist_2_pub.publish(velocity)
-		self.wrist_3_pub.publish(velocity)	
+		self.wrist_1_pub.publish(self.selected_action[3])
+		self.wrist_2_pub.publish(self.selected_action[4])
+		self.wrist_3_pub.publish(self.selected_action[5])	
 		print("Action Executed")
 		print( self.selected_action)
 	def save_model(self):
@@ -105,6 +107,11 @@ class HARI_RL():
 		#self.obs_points_post_action = self.obs_points_post_action.reshape((self.obs_points_post_action.shape[0] * self.obs_points_post_action.shape[1]))
 	
 	def get_reward(self):
+		
+		least_distance = rospy.wait_for_message("Least_distance" , PointCloud2)
+		least_distance = ros_numpy.numpify(least_distance)
+		least_ = np.zeros(4)
+		least_ = least_distance['distance']
 		
 		l = tframe.TransformListener()
 		l.waitForTransform("tool0" , "/box_link" , rospy.Time(0) , rospy.Duration(4.0))
@@ -171,7 +178,7 @@ class HARI_RL():
                 	#print("Batches = ")
                 	print(_)
 			#print(batches)
-            		for batch in range(1):
+            		for batch in range(120):
                 		with tf.GradientTape(persistent=True) as tape:
                     			obs_states = tf.convert_to_tensor(obs_state_arr[batch])
                     			self_states = tf.convert_to_tensor(self_state_arr[batch])
@@ -226,7 +233,7 @@ def start():
 	done = False
 	i = 0
 	while not done:
-		if i == 1 : 
+		if i == 120 : 
 			done = True
 		i = i+1
 		rl_obj.get_states()
@@ -248,13 +255,14 @@ def start():
 	a.append(rl_obj.points)
 	a.append(rl_obj.robot_position)
 	rl_obj.actor._set_inputs(a)
-	
-	rl_obj.actor.save('actor' , save_format ='tf')
+	rl_obj.actor.save_weights('./checkpoints/my_checkpoint')
+	#rl_obj.actor.save('actor' , save_format ='tf')
 	save_trial_critic = rl_obj.critic(a)
 	rl_obj.critic._set_inputs(a)
-	rl_obj.critic.save('critic')
+	rl_obj.critic.save_weights('./checkpoints/my_checkpoint')
+	#rl_obj.critic.save('critic')
 	#print(rl_obj.actor(rl_obj.memory.obs_states[4] , rl_obj.memory.self_states[4]))
 
 if __name__=="__main__":
-	start()
-	
+	while not rospy.is_shutdown():
+		start()

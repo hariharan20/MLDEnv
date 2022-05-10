@@ -27,9 +27,9 @@ def callback(data):
     # 100 = UR10
     # 150 = Obstacles
     obs_points = np_data[np.where(np_data['I']==200)]
-    rospy.loginfo(obs_points.shape[0])
+    #rospy.loginfo(obs_points.shape[0])
     points = np.zeros((obs_points.shape[0], 3))
-    rospy.loginfo("data_recieved") 
+    #rospy.loginfo("data_recieved") 
     points[:,0] = obs_points['x']
     points[:,1] = obs_points['y']
     points[:,2] = obs_points['z']
@@ -47,7 +47,7 @@ def callback(data):
     obs_points_pc2 = ros_numpy.msgify(PointCloud2 , obs_points)
     obs_points_pc2.header.frame_id = 'camera_link'
     NUMBER_CLUSTERS = len(np.unique(clustering.labels_))
-    rospy.loginfo(NUMBER_CLUSTERS)
+    #rospy.loginfo(NUMBER_CLUSTERS)
     centres = np.zeros((NUMBER_CLUSTERS , 3)) #centres in camera frame
     centres_in_base_frame = np.zeros((NUMBER_CLUSTERS , 3))
     centres_in_wrist_frame = np.zeros((NUMBER_CLUSTERS , 3))
@@ -66,8 +66,9 @@ def callback(data):
     listener = tf.TransformListener()
     #timer = rospy.Time.now() + rospy.Duration(4)
     listener.waitForTransform("/camera_link" , "/world", rospy.Time.now() , rospy.Duration(4))
+    least_distance = np.zeros(4 , dtype = [('distance' , np.float64)])
     for i in range(NUMBER_CLUSTERS):
-        rospy.loginfo(i) 
+        #rospy.loginfo(i) 
         same_class_points_np = obs_points[np.where(obs_points['I'] == i)]
 	same_class_points = np.zeros((same_class_points_np.shape[0] , 3))
 	same_class_points[:,0] = same_class_points_np['x']
@@ -93,13 +94,18 @@ def callback(data):
 	points_near_to_joints[i, 1, 0 ] = p.point.y
 	points_near_to_joints[i ,2 , 0] = p.point.z
 	points_near_to_joints[i , 3 , 0] = _
+	if(i == 0):
+		least_distance['distance'][0] = _
+	else :
+		if(least_distance['distance'][0]  > _ ):
+			least_distance['distance'][0] = _
 	points_x.append(p.point.x)
 	points_y.append(p.point.y)
 	points_z.append(p.point.z)
 	intensity.append((10 * i) + 1)  
-	rospy.loginfo(points_near_to_joints[i , : , 0])	
+	#rospy.loginfo(points_near_to_joints[i , : , 0])	
 	
-	laser_point.header.frame_id = "/wrist_2_link"
+	laser_point.header.frame_id = "/upper_arm_link"
 	#listener.waitForTransform("/camera_link" , "/wrist_2_link", rospy.Time.now() , rospy.Duration( 4.0))
 	p =  listener.transformPoint("/camera_link" , laser_point)
 	joint_origin_in_camera_frame = [p.point.x , p.point.y , p.point.z]
@@ -114,11 +120,16 @@ def callback(data):
 	points_near_to_joints[i, 1,  1] = p.point.y
 	points_near_to_joints[i ,2 , 1] = p.point.z
 	points_near_to_joints[i , 3 , 1] = _
+	if(i == 0):
+		least_distance['distance'][1] = _
+	else :
+		if(least_distance['distance'][1]  > _ ):
+			least_distance['distance'][1] = _
 	points_x.append(p.point.x)
 	points_y.append(p.point.y)
 	points_z.append(p.point.z)
 	intensity.append((10*i) + 2)
-	rospy.loginfo(points_near_to_joints[i , : , 1])	
+	#rospy.loginfo(points_near_to_joints[i , : , 1])	
 	laser_point.header.frame_id = "/wrist_1_link"	
 	#listener.waitForTransform("/camera_link" , "/wrist_1_link", rospy.Time.now() , rospy.Duration( 4.0))
 	p =  listener.transformPoint("/camera_link" , laser_point)
@@ -134,11 +145,16 @@ def callback(data):
 	points_near_to_joints[i, 1,  2] = p.point.y
 	points_near_to_joints[i ,2 , 2] = p.point.z
 	points_near_to_joints[i, 3 ,2] = _
+	if(i == 0):
+		least_distance['distance'][2] = _
+	else :
+		if(least_distance['distance'][2]  > _ ):
+			least_distance['distance'][2] = _
 	points_x.append(p.point.x)
 	points_y.append(p.point.y)
 	points_z.append(p.point.z)
 	intensity.append((10 * i ) + 3)
-	rospy.loginfo(points_near_to_joints[i , : , 2])			
+	#rospy.loginfo(points_near_to_joints[i , : , 2])			
 
 	laser_point.header.frame_id = "/tool0"
 	#listener.waitForTransform("/camera_link" , "/tool0", rospy.Time.now() , rospy.Duration( 4.0))
@@ -155,20 +171,30 @@ def callback(data):
 	points_near_to_joints[i, 1,  3] = p.point.y
 	points_near_to_joints[i ,2 , 3] = p.point.z
 	points_near_to_joints[i ,3 , 3] = _
+	if(i == 0):
+		least_distance['distance'][3] = _
+	else :
+		if(least_distance['distance'][3]  > _ ):
+			least_distance['distance'][3] = _
 	points_x.append(p.point.x)
 	points_y.append(p.point.y)
 	points_z.append(p.point.z)
 	intensity.append((10 * i ) + 4)
-	rospy.loginfo(points_near_to_joints[i , : , 3])
+	#rospy.loginfo(points_near_to_joints[i , : , 3])
     nearest_obs  = np.zeros((NUMBER_POINTS , 5))
+    rospy.loginfo(least_distance)
     nearest_obs  = np.zeros(NUMBER_POINTS , dtype=[('x' , np.float32), ('y', np.float32), ('z' , np.float32), ('intensity', np.float32) , ('distances' , np.float32)])
     nearest_obs['x'] = points_near_to_joints[: , 0  ,:].reshape(NUMBER_POINTS)
     nearest_obs['y'] = points_near_to_joints[: , 1 , :].reshape(NUMBER_POINTS)
     nearest_obs['z'] = points_near_to_joints[: , 2 , :].reshape(NUMBER_POINTS)
     nearest_obs['intensity'] = np.array(intensity)
     nearest_obs['distances'] = points_near_to_joints[: , 3 , :].reshape(NUMBER_POINTS)
+    least_distance_msg = ros_numpy.msgify(PointCloud2 , least_distance)
+    least_distance_msg.header.frame_id = "world"
+    least_distance_pub = rospy.Publisher("/Least_distance" , PointCloud2 , queue_size = 10)
+    least_distance_pub.publish(least_distance_msg)
     nearest_obs_msg = PointCloud2()
-    rospy.loginfo(nearest_obs['x'].shape)
+    #rospy.loginfo(nearest_obs['x'].shape)
     nearest_obs_msg = ros_numpy.msgify(PointCloud2, nearest_obs)
     nearest_obs_msg.header.frame_id = 'world'
     pub_nearest_obs = rospy.Publisher("/RL_States/Nearest_Obstacles_States" , PointCloud2 , queue_size=10)
