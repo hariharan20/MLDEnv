@@ -9,6 +9,10 @@ import tf
 from geometry_msgs.msg import PointStamped, Point
 #import moveit_commander as mc
 from sensor_msgs.msg import JointState
+import tf2_msgs.msg
+
+
+
 
 def dis_calc(listp , centre):
 	centre = np.array(centre)
@@ -17,7 +21,6 @@ def dis_calc(listp , centre):
 		dist.append(np.linalg.norm(centre - listp[i]))
 	dist = np.array(dist)
         return np.min(dist) , listp[np.where(dist==np.min(dist))]
-
 
 def callback(data):
     np_data = ros_numpy.numpify(data)
@@ -63,9 +66,17 @@ def callback(data):
     points_z = []
     intensity = []
     rospy.loginfo("Data processing Initialized")
-    listener = tf.TransformListener()
     #timer = rospy.Time.now() + rospy.Duration(4)
-    listener.waitForTransform("/camera_link" , "/world", rospy.Time.now() , rospy.Duration(4))
+    #rospy.sleep(0.1)
+    success = False		
+    #timer = rospy.Time.now()
+    #listener = listee()
+    #tf_data = rospy.wait_for_message("/tf", tf2_msgs.msg.TFMessage)
+    timer = rospy.Time.now()
+    print(timer)
+    global listener
+    listener.waitForTransform("/camera_link" , "/tool0", timer , rospy.Duration(4.0))
+    	
     least_distance = np.zeros(4 , dtype = [('distance' , np.float64)])
     for i in range(NUMBER_CLUSTERS):
         #rospy.loginfo(i) 
@@ -208,9 +219,15 @@ def callback(data):
 
 
 
-if __name__=="__main__":
+def start():
     rospy.init_node("clusterer")
     rospy.loginfo("Node Started")
+    global listener 
+    listener = tf.TransformListener()
     sub = rospy.Subscriber("/predicted_topic", PointCloud2, callback)
     rospy.loginfo("Subscriber_started")
-    rospy.spin()
+    
+if __name__ == "__main__":
+	
+	start()
+	rospy.spin()
