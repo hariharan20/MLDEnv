@@ -30,7 +30,7 @@ class HARI_RL():
 		#		[-0.05, -0.05,  0.05],
 		#		[-0.05, 0 , -0.05],
 		#		[-0.05, 0  , 0.05 ]]
-		action_for_one_joint = np.linspace(-0.1  , 0.1 ,3)
+		action_for_one_joint = np.linspace(-0.5  , 0.5 ,10)
 		self.actions = np.array(np.meshgrid(action_for_one_joint ,action_for_one_joint , action_for_one_joint , action_for_one_joint , action_for_one_joint ,action_for_one_joint)).T.reshape(-1 , 6)
 		n_actions = len(self.actions)
 		self.actor = ActorNetwork(n_actions)
@@ -49,6 +49,7 @@ class HARI_RL():
 		self.policy_clip = 0.2	
 		self.robot_position = []
 		self.robot_velocity = []
+		self.l = tframe.TransformListener()
 	def cb_get_states(self , data):
 		#rospy.loginfo(data.position)
 		self.robot_position  = np.array(data.position)#[1]
@@ -97,6 +98,7 @@ class HARI_RL():
 	
 	def states_post_action(self):
 		data = rospy.wait_for_message("/RL_States/Nearest_Obstacles_States" , PointCloud2)
+		self.stop_moving()
 		np_data = ros_numpy.numpify(data)
 		#self.obs_points_post_action = np.zeros((np_data.shape[0] , 3))
 		#self.obs_points_post_action[ : , 0] = np_data['x']
@@ -110,22 +112,40 @@ class HARI_RL():
 		
 		least_distance = rospy.wait_for_message("Least_distance" , PointCloud2)
 		least_distance = ros_numpy.numpify(least_distance)
-		least_ = np.zeros(4)
-		least_ = least_distance['distance']
+		fore_arm = least_distance['distance'][0]
+		upper_arm = least_distance['distance'][1]
+		wrist_1 = least_distance['distance'][2]
+		tool = least_distance['distance'][3]
+		fore_arm_ok = False
+		upper_arm_ok = False
+		wrist_1_ok = False
+		tool_ok = False
+		if (fore_arm < 0.5 and fore_arm > 0.25):
+			fore_arm_ok = True
+		if (upper_arm < 0.5 and upper_arm > 0.25):
+			upper_arm_ok = True
+		if (wrist_1 < 0.5 and wrist_1 > 0.25):
+			wrist_1_ok = True
+		if(tool_ok < 0.5 and tool_ok > 0.25):
+			tool_ok = True
+		obstacle_ok = fore_arm_ok and upper_arm_ok and wrist_1_ok and tool_ok
 		
-		l = tframe.TransformListener()
-		l.waitForTransform("tool0" , "/box_link" , rospy.Time(0) , rospy.Duration(4.0))
+		if (obstacle_ok == True ):
+			obstacle = 1
+		else:
+			obstacle = 0.5
+		self.l.waitForTransform("tool0" , "/box_link" , rospy.Time(0) , rospy.Duration(4.0))
 		pointstamped = PointStamped()
 		pointstamped.header.frame_id = "tool0"
 		pointstamped.header.stamp = rospy.Time(0)
 		pointstamped.point.x = 0.0
 		pointstamped.point.y = 0.0
 		pointstamped.point.z = 0.0
-		p = l.transformPoint("box_link" , pointstamped)
+		p = self.l.transformPoint("box_link" , pointstamped)
 		a = np.array([p.point.x , p.point.y , p.point.z])
 		self.dist_to_goal  = np.linalg.norm(a)
 		self.dist_to_goal_weighted = self.dist_to_goal * self.goal_weight
-		self.min_obs_dist_weighted = self.min_dist * self.obs_weight
+		self.min_obs_dist_weighted = obstacle * self.obs_weight
 		if( self.dist_to_goal_weighted < 0.2 and self.min_obs_dist_weighted > 0.5):
 			self.reward = 1
 		else : 
@@ -178,7 +198,7 @@ class HARI_RL():
                 	#print("Batches = ")
                 	print(_)
 			#print(batches)
-            		for batch in range(120):
+            		for batch in range(10):
                 		with tf.GradientTape(persistent=True) as tape:
                     			obs_states = tf.convert_to_tensor(obs_state_arr[batch])
                     			self_states = tf.convert_to_tensor(self_state_arr[batch])
@@ -233,7 +253,7 @@ def start():
 	done = False
 	i = 0
 	while not done:
-		if i == 120 : 
+		if i == 10 : 
 			done = True
 		i = i+1
 		rl_obj.get_states()
@@ -241,7 +261,7 @@ def start():
 		action , prob , val = rl_obj.choose_action(rl_obj.points , rl_obj.robot_position)
 		rl_obj.take_action(action)
 		#rospy.sleep(2)
-		rl_obj.states_post_action()
+		#rl_obj.states_post_action()
 		rl_obj.get_reward()
 		rl_obj.memory.store_memory(rl_obj.points , rl_obj.robot_position , action  , prob, val , rl_obj.reward , done)
 		n_steps  = n_steps + 1
@@ -264,5 +284,4 @@ def start():
 	#print(rl_obj.actor(rl_obj.memory.obs_states[4] , rl_obj.memory.self_states[4]))
 
 if __name__=="__main__":
-	while not rospy.is_shutdown():
-		start()
+	start()
