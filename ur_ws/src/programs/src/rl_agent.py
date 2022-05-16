@@ -30,7 +30,7 @@ class HARI_RL():
 		#		[-0.05, -0.05,  0.05],
 		#		[-0.05, 0 , -0.05],
 		#		[-0.05, 0  , 0.05 ]]
-		action_for_one_joint = np.linspace(-0.5  , 0.5 ,10)
+		action_for_one_joint = np.linspace(-0.1  , 0.1 ,10)
 		self.actions = np.array(np.meshgrid(action_for_one_joint ,action_for_one_joint , action_for_one_joint , action_for_one_joint , action_for_one_joint ,action_for_one_joint)).T.reshape(-1 , 6)
 		n_actions = len(self.actions)
 		self.actor = ActorNetwork(n_actions)
@@ -50,6 +50,7 @@ class HARI_RL():
 		self.robot_position = []
 		self.robot_velocity = []
 		self.l = tframe.TransformListener()
+		self.old_dist_to_goal = 2
 	def cb_get_states(self , data):
 		#rospy.loginfo(data.position)
 		self.robot_position  = np.array(data.position)#[1]
@@ -145,12 +146,15 @@ class HARI_RL():
 		a = np.array([p.point.x , p.point.y , p.point.z])
 		self.dist_to_goal  = np.linalg.norm(a)
 		self.dist_to_goal_weighted = self.dist_to_goal * self.goal_weight
+		#print(self.dist_to_goal)
+		self.goal_nearing = self.dist_to_goal < self.old_dist_to_goal
 		self.min_obs_dist_weighted = obstacle * self.obs_weight
-		if( self.dist_to_goal_weighted < 0.2 and self.min_obs_dist_weighted > 0.5):
+		if( self.goal_nearing or self.min_obs_dist_weighted > 0.5):
 			self.reward = 1
 		else : 
 			self.reward = 0
 		rew  = "Reward is = " + str(self.reward)
+		self.old_dist_to_goal = self.dist_to_goal
 		print(rew)
 		return self.reward
 	
@@ -250,38 +254,46 @@ def start():
 	score = 0
 	n_steps = 0
 	best_score = -1
-	done = False
-	i = 0
-	while not done:
-		if i == 10 : 
-			done = True
-		i = i+1
-		rl_obj.get_states()
-		rl_obj.cb_obs()
-		action , prob , val = rl_obj.choose_action(rl_obj.points , rl_obj.robot_position)
-		rl_obj.take_action(action)
-		#rospy.sleep(2)
-		#rl_obj.states_post_action()
-		rl_obj.get_reward()
-		rl_obj.memory.store_memory(rl_obj.points , rl_obj.robot_position , action  , prob, val , rl_obj.reward , done)
-		n_steps  = n_steps + 1
-		score  = score + rl_obj.reward
-		#rl_obj.learn()
-		#rl_obj.save_models()
+	game_index = 0
+	while not rospy.is_shutdown():
+		game_index = game_index + 1
+		rospy.loginfo("About to start in 20 Senconds")
+		rospy.sleep(20)
+		done = False
+		i = 0
+		while not done:
+			if i == 10 : 
+				done = True
+			i = i+1
+			rl_obj.get_states()
+			rl_obj.cb_obs()
+			action , prob , val = rl_obj.choose_action(rl_obj.points , rl_obj.robot_position)
+			rl_obj.take_action(action)
+			#rospy.sleep(2)
+			#rl_obj.states_post_action()
+			rl_obj.get_reward()
+			rl_obj.memory.store_memory(rl_obj.points , rl_obj.robot_position , action  , prob, val , rl_obj.reward , done)
+			n_steps  = n_steps + 1
+			score  = score + rl_obj.reward
+			#rl_obj.learn()
+			#rl_obj.save_models()
 
-	rl_obj.learn()
-	#save_trial = rl_obj.actor(rl_obj.points , rl_obj.robot_position)
-	a = []
-	a.append(rl_obj.points)
-	a.append(rl_obj.robot_position)
-	rl_obj.actor._set_inputs(a)
-	rl_obj.actor.save_weights('./checkpoints/my_checkpoint')
-	#rl_obj.actor.save('actor' , save_format ='tf')
-	save_trial_critic = rl_obj.critic(a)
-	rl_obj.critic._set_inputs(a)
-	rl_obj.critic.save_weights('./checkpoints/my_checkpoint')
-	#rl_obj.critic.save('critic')
-	#print(rl_obj.actor(rl_obj.memory.obs_states[4] , rl_obj.memory.self_states[4]))
-
+		rl_obj.learn()
+		#save_trial = rl_obj.actor(rl_obj.points , rl_obj.robot_position)
+		a = []
+		a.append(rl_obj.points)
+		a.append(rl_obj.robot_position)
+		if ( game_index == 1):
+			rl_obj.actor._set_inputs(a)
+		rl_obj.actor.save_weights('./checkpoints/my_checkpoint')
+		#rl_obj.actor.save('actor' , save_format ='tf')
+		save_trial_critic = rl_obj.critic(a)
+		if ( game_index == 1):
+			rl_obj.critic._set_inputs(a)
+		rl_obj.critic.save_weights('./checkpoints/my_checkpoint')
+		#rl_obj.critic.save('critic')
+		#print(rl_obj.actor(rl_obj.memory.obs_states[4] , rl_obj.memory.self_states[4]))
+		rospy.loginfo("Training Completed, Please Reset the scene, You GOT 2 Minutes")
+		rospy.sleep(60)
 if __name__=="__main__":
 	start()
