@@ -30,8 +30,8 @@ class HARI_RL():
 		#		[-0.05, -0.05,  0.05],
 		#		[-0.05, 0 , -0.05],
 		#		[-0.05, 0  , 0.05 ]]
-		action_for_one_joint = np.linspace(-0.1  , 0.1 ,10)
-		self.actions = np.array(np.meshgrid(action_for_one_joint ,action_for_one_joint , action_for_one_joint , action_for_one_joint , action_for_one_joint ,action_for_one_joint)).T.reshape(-1 , 6)
+		action_for_one_joint = np.linspace(-0.2  , 0.2 ,5)
+		self.actions = np.array(np.meshgrid(action_for_one_joint ,action_for_one_joint , action_for_one_joint)).T.reshape(-1 , 3)
 		n_actions = len(self.actions)
 		self.actor = ActorNetwork(n_actions)
 		self.critic = CriticNetwork()
@@ -87,9 +87,9 @@ class HARI_RL():
 		self.shoulder_pan_pub.publish(self.selected_action[0])
 		self.shoulder_lift_pub.publish(self.selected_action[1])
 		self.elbow_pub.publish(self.selected_action[2])
-		self.wrist_1_pub.publish(self.selected_action[3])
-		self.wrist_2_pub.publish(self.selected_action[4])
-		self.wrist_3_pub.publish(self.selected_action[5])	
+		self.wrist_1_pub.publish(0)
+		self.wrist_2_pub.publish(0)
+		self.wrist_3_pub.publish(0)	
 		print("Action Executed")
 		print( self.selected_action)
 	def save_model(self):
@@ -187,7 +187,8 @@ class HARI_RL():
             		obs_state_arr , self_state_arr, action_arr, old_prob_arr, vals_arr,\
                 		reward_arr, dones_arr, batches = \
                 		self.memory.generate_batches()
-
+			print(np.array(obs_state_arr[8]))
+			print("--------------------------------------------")
             		values = vals_arr
             		advantage = np.zeros(len(reward_arr), dtype=np.float32)
 
@@ -204,13 +205,13 @@ class HARI_RL():
 			#print(batches)
             		for batch in range(10):
                 		with tf.GradientTape(persistent=True) as tape:
-                    			obs_states = tf.convert_to_tensor(obs_state_arr[batch])
-                    			self_states = tf.convert_to_tensor(self_state_arr[batch])
+                    			obs_states = tf.convert_to_tensor(obs_state_arr[batch].numpy())
+                    			self_states = tf.convert_to_tensor(np.array(self_state_arr[batch]))
                     			a = []
                     			a.append(obs_states)
                     			a.append(self_states)
-                    			old_probs = tf.convert_to_tensor(old_prob_arr[batch])
-                    			actions = tf.convert_to_tensor(action_arr[batch])
+                    			old_probs = tf.convert_to_tensor(np.array(old_prob_arr[batch]))
+                    			actions = tf.convert_to_tensor(np.array(action_arr[batch]))
                     			probs = self.actor(a)
                     			dist = tfp.distributions.Categorical(probs)
                     			new_probs = dist.log_prob(actions)
@@ -258,7 +259,7 @@ def start():
 	while not rospy.is_shutdown():
 		game_index = game_index + 1
 		rospy.loginfo("About to start in 20 Senconds")
-		rospy.sleep(20)
+		#rospy.sleep(20)
 		done = False
 		i = 0
 		while not done:
@@ -285,15 +286,15 @@ def start():
 		a.append(rl_obj.robot_position)
 		if ( game_index == 1):
 			rl_obj.actor._set_inputs(a)
-		rl_obj.actor.save_weights('./checkpoints/my_checkpoint')
+		rl_obj.actor.save_weights('./actor_checkpoints/my_checkpoint')
 		#rl_obj.actor.save('actor' , save_format ='tf')
 		save_trial_critic = rl_obj.critic(a)
 		if ( game_index == 1):
 			rl_obj.critic._set_inputs(a)
-		rl_obj.critic.save_weights('./checkpoints/my_checkpoint')
+		rl_obj.critic.save_weights('./critic_checkpoints/my_checkpoint')
 		#rl_obj.critic.save('critic')
 		#print(rl_obj.actor(rl_obj.memory.obs_states[4] , rl_obj.memory.self_states[4]))
 		rospy.loginfo("Training Completed, Please Reset the scene, You GOT 2 Minutes")
-		rospy.sleep(60)
+		#rospy.sleep(30)
 if __name__=="__main__":
 	start()
