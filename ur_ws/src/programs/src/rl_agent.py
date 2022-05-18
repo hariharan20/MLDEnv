@@ -308,6 +308,7 @@ def start():
 		reset_req.joint_names=['shoulder_pan_joint', 'shoulder_lift_joint' , 'elbow_joint', 'wrist_1_joint', 'wrist_2_joint' , 'wrist_3_joint']
 		reset_req.joint_positions =[0.0 , 0.0 , 0.0 ,0.0 ,0.0 ,0.0 ]
 		res = reset_joints(reset_req)
+		
 		#rospy.wait_for_service('/gazebo/reset_world')
 		#reset_simulation = rospy.ServiceProxy('/gazebo/reset_world' ,Empty)
 		#reset_simulation()
