@@ -14,7 +14,10 @@ import tensorflow.keras as keras
 import tf as tframe
 from memory import PPOMemory
 from geometry_msgs.msg import PointStamped , Point
-
+import matplotlib.pyplot as plt
+from std_srvs.srv import Empty
+from gazebo_msgs.srv import SetModelConfiguration
+from gazebo_msgs.srv import SetModelConfigurationRequest
 
 class HARI_RL():
 	def __init__(self):
@@ -30,7 +33,7 @@ class HARI_RL():
 		#		[-0.05, -0.05,  0.05],
 		#		[-0.05, 0 , -0.05],
 		#		[-0.05, 0  , 0.05 ]]
-		action_for_one_joint = np.linspace(-0.2  , 0.2 ,5)
+		action_for_one_joint = np.linspace(-0.5  , 0.5 ,10)
 		self.actions = np.array(np.meshgrid(action_for_one_joint ,action_for_one_joint , action_for_one_joint)).T.reshape(-1 , 3)
 		n_actions = len(self.actions)
 		self.actor = ActorNetwork(n_actions)
@@ -187,19 +190,16 @@ class HARI_RL():
             		obs_state_arr , self_state_arr, action_arr, old_prob_arr, vals_arr,\
                 		reward_arr, dones_arr, batches = \
                 		self.memory.generate_batches()
-			print(np.array(obs_state_arr[8]))
-			print("--------------------------------------------")
-            		values = vals_arr
+			values = vals_arr
             		advantage = np.zeros(len(reward_arr), dtype=np.float32)
 
             		for t in range(len(reward_arr)-1):
                 		discount = 1
                 		a_t = 0
-                	for k in range(t, len(reward_arr)-1):
-                    		a_t += discount*(reward_arr[k] + self.gamma*values[k+1] * (
-                        		1-int(dones_arr[k])) - values[k])
-                    		discount *= self.gamma*self.gae_lambda
-                	advantage[t] = a_t
+                		for k in range(t, len(reward_arr)-1):
+                    			a_t += discount*(reward_arr[k] + self.gamma*values[k+1] * (1-int(dones_arr[k])) - values[k])
+                    			discount *= self.gamma*self.gae_lambda
+                		advantage[t] = a_t
                 	#print("Batches = ")
                 	print(_)
 			#print(batches)
@@ -231,8 +231,6 @@ class HARI_RL():
                     			actor_loss = tf.math.reduce_mean(actor_loss)
 
                     			returns = advantage[batch] + values[batch]
-                    # critic_loss = tf.math.reduce_mean(tf.math.pow(
-                    #                                  returns-critic_value, 2))
                     			critic_loss = keras.losses.MSE(critic_value, returns)
 
                 		actor_params = self.actor.trainable_variables
@@ -247,6 +245,7 @@ class HARI_RL():
         	self.memory.clear_memory()
         	
 def start():
+	plt.ion()
 	rospy.init_node("RL_Agent")
 	rl_obj = HARI_RL()
 	rl_obj.stop_moving()
@@ -256,10 +255,15 @@ def start():
 	n_steps = 0
 	best_score = -1
 	game_index = 0
-	while not rospy.is_shutdown():
+	score_history = []
+	index = []
+	while game_index  < 20:
+		
+		score  = []
 		game_index = game_index + 1
+		index.append(game_index)
 		rospy.loginfo("About to start in 20 Senconds")
-		#rospy.sleep(20)
+		#rospy.sleep(10)
 		done = False
 		i = 0
 		while not done:
@@ -273,12 +277,14 @@ def start():
 			#rospy.sleep(2)
 			#rl_obj.states_post_action()
 			rl_obj.get_reward()
+			score.append(rl_obj.reward)
 			rl_obj.memory.store_memory(rl_obj.points , rl_obj.robot_position , action  , prob, val , rl_obj.reward , done)
 			n_steps  = n_steps + 1
-			score  = score + rl_obj.reward
+			#score  = score + rl_obj.reward
 			#rl_obj.learn()
 			#rl_obj.save_models()
-
+		score_history.append(np.mean(score))
+		rl_obj.stop_moving()
 		rl_obj.learn()
 		#save_trial = rl_obj.actor(rl_obj.points , rl_obj.robot_position)
 		a = []
@@ -295,6 +301,20 @@ def start():
 		#rl_obj.critic.save('critic')
 		#print(rl_obj.actor(rl_obj.memory.obs_states[4] , rl_obj.memory.self_states[4]))
 		rospy.loginfo("Training Completed, Please Reset the scene, You GOT 2 Minutes")
+		reset_joints = rospy.ServiceProxy('/gazebo/set_model_configuration', SetModelConfiguration)
+		reset_req = SetModelConfigurationRequest()
+		reset_req.model_name= 'robot'
+		reset_req.urdf_param_name = 'robot_description'
+		reset_req.joint_names=['shoulder_pan_joint', 'shoulder_lift_joint' , 'elbow_joint', 'wrist_1_joint', 'wrist_2_joint' , 'wrist_3_joint']
+		reset_req.joint_positions =[0.0 , 0.0 , 0.0 ,0.0 ,0.0 ,0.0 ]
+		res = reset_joints(reset_req)
+		#rospy.wait_for_service('/gazebo/reset_world')
+		#reset_simulation = rospy.ServiceProxy('/gazebo/reset_world' ,Empty)
+		#reset_simulation()
 		#rospy.sleep(30)
+		plt.plot(index , score_history)
+		plt.draw()
+		plt.pause(0.01)
+		plt.clf()
 if __name__=="__main__":
 	start()
