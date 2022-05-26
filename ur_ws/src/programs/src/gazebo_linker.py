@@ -34,7 +34,7 @@ class UR_INTERFACE(gym.Env):
 		self.episode_num = 0
 		self.goal_weight = 1
 		self.action_space = spaces.Box(-2 , 2 ,( 6,))
-		self.observation_space = spaces.Box(-10 , 10 , (6,))
+		self.observation_space = spaces.Box(-10 , 10 , (90,))#Correction Required #Correct on 26May 2022
 		
 	def seed(self, seed = None):
 		self.np_random  , seed  = seeding.np_random(seed)
@@ -85,17 +85,21 @@ class UR_INTERFACE(gym.Env):
 		
 	
 	def _get_obs(self):
+		states_cnt = np.ones(90) * 10
+		
 		self.robot_states = rospy.wait_for_message("joint_states" , JointState)
-		a = []
-		a.append(self.robot_states.position)
+		for i in range(len(self.robot_states.position)):
+			states_cnt[i] = self.robot_states.position[i]
 		data = rospy.wait_for_message("/RL_States/Nearest_Obstacles_States" , PointCloud2)
 		np_data = ros_numpy.numpify(data)
 		self.points = np.zeros((np_data.shape[0] , 3))
 		self.points[: , 0] = np_data['x']
 		self.points[: , 1] = np_data['y']
 		self.points[: , 2] = np_data['z']
-		a.append(self.points)
-		return a
+		self.points = self.points.reshape((self.points.shape[0] * self.points.shape[1]))
+		for i in range(len(self.points)):
+			states_cnt[i + len(self.robot_states.position)] = self.points[i]
+		return states_cnt
 		
 	def _is_done(self):
 		self.data = rospy.wait_for_message("Dist_to_Goal" , Float64)
