@@ -127,13 +127,13 @@ class ur(gym.Env):
 		#print("Fore_arm  : " , fore_arm)
 		#print("Upper_arm : " , upper_arm)
 		#print("Wrist_1 : " , wrist_1)
-		if (fore_arm > 0.25):
+		if (fore_arm > 0.10):
 			fore_arm_ok = True
-		if (upper_arm > 0.15):
+		if (upper_arm > 0.10):
 			upper_arm_ok = True
-		if (wrist_1 > 0.25):
+		if (wrist_1 > 0.10):
 			wrist_1_ok = True
-		if(tool > 0.25):
+		if(tool > 0.10):
 			tool_ok = True
 		obstacle_ok = fore_arm_ok and upper_arm_ok and wrist_1_ok and tool_ok
 		self.dist_to_goal  = self.data
@@ -153,9 +153,11 @@ class ur(gym.Env):
 			self.reward = 200
 		else: 
 			self.reward = -100
-		
 		if ( self.goal_nearing):
 			self.reward  = self.reward + 2
+		if(obstacle_ok ==True):
+			self.reward = self.reward + 200
+		
 		rew  = "Reward is = " + str(self.reward)
 		self.old_dist_to_goal = self.dist_to_goal
 		#print(rew)
