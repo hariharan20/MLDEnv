@@ -1,0 +1,12 @@
+<launch>
+
+<param name="/use_sim_time" value="true" />
+
+<node pkg="programs" type="pcldata.py" name="pcl_sampler"/>
+<node pkg="programs" type="state_pro.py" name="clusterer"/>
+<node pkg="programs" name="tf_to_camera" type="camera_to_world.py"/>
+<node pkg="programs" name="tf_to_box" type="box_to_world.py"/>
+<!--<node pkg="pointnet" name="Predictor" type="batch_inference.py"/>
+<node pkg="programs" name="clusterer" type="state_pro.py"/>
+-->
+</launch>
