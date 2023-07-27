@@ -30,7 +30,7 @@
 <node pkg="programs" type="camera_to_world.py" name="tf_to_camera"/>
 <node pkg="programs" type="box_to_world.py" name="tf_to_box"/>
 <node pkg="programs" type="box2_to_world.py" name="tf_to_box2"/>
-<node pkg="programs" type="dist_to.py" name="adsfg"/>
+<node pkg="programs" type="dist_to.py" name="dist_to_goal"/>
 
 
 
