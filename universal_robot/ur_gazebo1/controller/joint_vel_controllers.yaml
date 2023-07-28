@@ -1,0 +1,33 @@
+joint_state_controller:
+   type: joint_state_controller/JointStateController
+   publish_rate: 50
+
+Ashoulder_pan_joint_velocity_controller:
+   type: velocity_controllers/JointVelocityController
+   joint: Ashoulder_pan_joint
+   pid: {p: 0.5,  i: 0.0, d: 0.1, i_clamp: 1}
+
+Ashoulder_lift_joint_velocity_controller:
+   type: velocity_controllers/JointVelocityController
+   joint: Ashoulder_lift_joint
+   pid: {p: 0.5,  i: 0.0, d: 0.1, i_clamp: 1}
+
+Aelbow_joint_velocity_controller:
+   type: velocity_controllers/JointVelocityController
+   joint: Aelbow_joint
+   pid: {p: 1.2,  i: 0.0, d: 0.1, i_clamp: 1}
+
+Awrist_1_joint_velocity_controller:
+   type: velocity_controllers/JointVelocityController
+   joint: Awrist_1_joint
+   pid: {p: 1.2,  i: 0.0, d: 0.1, i_clamp: 1}
+
+Awrist_2_joint_velocity_controller:
+   type: velocity_controllers/JointVelocityController
+   joint: Awrist_2_joint
+   pid: {p: 1.2,  i: 0.0, d: 0.1, i_clamp: 1}
+
+Awrist_3_joint_velocity_controller:
+   type: velocity_controllers/JointVelocityController
+   joint: Awrist_3_joint
+   pid: {p: 1.2,  i: 0.0, d: 0.1, i_clamp: 1}

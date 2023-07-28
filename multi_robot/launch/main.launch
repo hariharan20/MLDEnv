@@ -1,0 +1,18 @@
+<launch>
+<param name="/use_sim_time" value="true" />
+<!-- start world -->
+<node name="gazebo" pkg="gazebo_ros" type="gazebo" 
+  args="$(find multi_robot)/worlds/dut.world" respawn="true" output="screen" />
+
+<!--launch robots in the simulation environment-->
+<include file="$(find multi_robot)/launch/main_1.launch"/>
+<node pkg="tf" type="static_transform_publisher" name="robot2" args="0.0 1.417 0.0 0 0 0 world Abase_link 100"/>
+
+<!--launch static transform scripts-->
+
+<node pkg="programs" type="camera_to_world.py" name="tf_to_camera"/>
+<node pkg="programs" type="box_to_world.py" name="tf_to_box"/>
+<node pkg="programs" type="box2_to_world.py" name="tf_to_box2"/>
+<node pkg="programs" type="dist_to.py" name="adsfg"/>
+
+</launch>
