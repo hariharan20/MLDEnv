@@ -17,7 +17,7 @@ include_directories(
 
 #add_executable(pcl_filtered src/getwork.cpp)
 add_executable(table_pcd src/table_pcd.cpp)
-add_executable(tabler_pcd src/tabler_pcd.cpp)
+#add_executable(tabler_pcd src/tabler_pcd.cpp)
 add_executable(pcd_viewer src/pcd_viewer.cpp)
 #target_link_libraries(pcl_filtered
  #  ${catkin_LIBRARIES}
@@ -25,9 +25,9 @@ add_executable(pcd_viewer src/pcd_viewer.cpp)
 target_link_libraries(table_pcd
    ${catkin_LIBRARIES}
 )
-target_link_libraries(tabler_pcd
-   ${catkin_LIBRARIES}
- )
+#target_link_libraries(tabler_pcd
+#   ${catkin_LIBRARIES}
+# )
 
 
 target_link_libraries(pcd_viewer

@@ -1,0 +1,29 @@
+<?xml version="1.0" ?>
+<sdf version="1.5">
+  <model name="nut">
+  	<static>0</static>
+    <link name="link">
+		<inertial>
+			<mass>0.2</mass>
+		</inertial>
+      <visual name="visual">
+        <geometry>
+          <mesh>
+            <uri>model://nut/meshes/nut.dae</uri>
+          </mesh>
+        </geometry>
+	<material>
+		<ambient>0.8 0.8 0.8  1</ambient>
+ 	</material>
+      </visual>
+
+      <collision name="collision">
+        <geometry>
+          <mesh>
+            <uri>model://nut/meshes/nut.dae</uri>
+          </mesh>
+        </geometry>
+      </collision>
+    </link>
+  </model>
+</sdf>

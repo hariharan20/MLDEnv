@@ -1,0 +1,23 @@
+<?xml version='1.0'?>
+<sdf version='1.4'>
+ <model name='robot_stand'>
+  <static>true</static>
+  <link name='link'>
+   <collision name='link_total'>
+    <pose>0 0 0.35 0 0 0</pose>
+    <geometry>
+     <box> 
+      <size>0.913 0.4 0.82</size>
+     </box>
+    </geometry>
+   </collision>
+   <visual name='visual'>
+    <geometry>
+     <mesh>
+      <uri>model://robot_stand/meshes/robot_stand.dae</uri>
+     </mesh>
+    </geometry>
+   </visual>
+  </link>
+ </model>
+</sdf>
