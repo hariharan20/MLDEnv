@@ -16,13 +16,13 @@ from geometry_msgs.msg import Point
 import numpy as np
 count = 0
 parser = argparse.ArgumentParser()
-parser.add_argument('--gpu', type=int, default=5, help='GPU to use [default: GPU 0]')
+parser.add_argument('--gpu', type=int, default=0, help='GPU to use [default: GPU 0]')
 parser.add_argument('--batch_size', type=int, default=1, help='Batch Size during training [default: 1]')
 parser.add_argument('--num_point', type=int, default=4096, help='Point number [default: 4096]')
-parser.add_argument('--model_path', default='/home/hariharan/ur_ws/src/pointnet/src/pointnet/sem_seg/log/model.ckpt', help='model checkpoint file path')
-parser.add_argument('--dump_dir', default='/home/hariharan/ur_ws/src/pointnet/src/pointnet/sem_seg/log/dump', help='dump folder path')
-parser.add_argument('--output_filelist', default='/home/hariharan/ur_ws/src/pointnet/src/pointnet/sem_seg/log/output_filelist.txt', help='TXT filename, filelist, each line is an output for a room')
-parser.add_argument('--room_data_filelist', default='/home/hariharan/ur_ws/src/pointnet/src/pointnet/sem_seg/metal/area6_data_label.txt', help='TXT filename, filelist, each line is a test room data label file.')
+parser.add_argument('--model_path', default='/home/hariharan/ws/src/Learning_replanning/pointnet/src/pointnet/sem_seg/log/model.ckpt', help='model checkpoint file path')
+parser.add_argument('--dump_dir', default='/home/hariharan/ws/src/Learning_replanning/pointnet/src/pointnet/sem_seg/log/dump', help='dump folder path')
+parser.add_argument('--output_filelist', default='/home/hariharan/ws/src/Learning_replanning/pointnet/src/pointnet/sem_seg/log/output_filelist.txt', help='TXT filename, filelist, each line is an output for a room')
+parser.add_argument('--room_data_filelist', default='/home/hariharan/ws/src/Learning_replanning/pointnet/src/pointnet/sem_seg/metal/area6_data_label.txt', help='TXT filename, filelist, each line is a test room data label file.')
 parser.add_argument('--no_clutter', action='store_true', help='If true, donot count the clutter class')
 parser.add_argument('--visu', default = False, action='store_true', help='Whether to output OBJ file for prediction visualization.')
 FLAGS = parser.parse_args()
@@ -190,43 +190,64 @@ def callback(data):
 
 def talker():
     with tf.Graph().as_default():
-        rospy.init_node("Predictor")
-        sub_array_pcd = rospy.Subscriber("/array_pcd" , PointCloud2, CB_array_pcd)
-        is_training = False
-        with tf.device('/gpu:'+str(GPU_INDEX)):
+    	  rospy.init_node("Predictor")
+    	  #count = 0
+    	  #rate = rospy.Rate(10)
+          #sub = rospy.Subscriber("/MinPoint" , Point , callback)
+          # TRIALS
+          sub_array_pcd = rospy.Subscriber("/array_pcd" , PointCloud2, CB_array_pcd)
+    	  is_training = False
+    	  #rospy.loginfo("count")
+    	  #rospy.loginfo(count)
+    	  with tf.device('/gpu:'+str(GPU_INDEX)):
             pointclouds_pl, labels_pl = placeholder_inputs(BATCH_SIZE, NUM_POINT)
             is_training_pl = tf.placeholder(tf.bool, shape=())
+        # simple model
             pred = get_model(pointclouds_pl, is_training_pl)
             loss = get_loss(pred, labels_pl)
             pred_softmax = tf.nn.softmax(pred)
+        
+        # Add ops to save and restore all the variables.
             saver = tf.train.Saver()
-            config = tf.ConfigProto()
-            config.gpu_options.allow_growth = True
-            config.allow_soft_placement = True
-            config.log_device_placement = True
-            sess = tf.Session(config=config)
-            saver.restore(sess, MODEL_PATH)
-            log_string("Model restored.")
-        ops = {'pointclouds_pl': pointclouds_pl,
+
+    
+    # Create a session
+     	    config = tf.ConfigProto()
+    	    config.gpu_options.allow_growth = True
+    	    config.allow_soft_placement = True
+    	    config.log_device_placement = True
+    	    sess = tf.Session(config=config)
+    
+    # Restore variables from disk.
+    	    saver.restore(sess, MODEL_PATH)
+    	    log_string("Model restored.")
+    	  ops = {'pointclouds_pl': pointclouds_pl,
         'labels_pl': labels_pl,
         'is_training_pl': is_training_pl,
         'pred': pred,
         'pred_softmax': pred_softmax,
         'loss': loss}
         
-        while not rospy.is_shutdown():
-            total_correct = 0
-            total_seen = 0
-            for room_path in ROOM_PATH_LIST:
-                out_data_label_filename = os.path.basename(room_path)[:-4] + '_pred.txt'
-                out_data_label_filename = os.path.join(DUMP_DIR, out_data_label_filename)
-                out_gt_label_filename = os.path.basename(room_path)[:-4] + '_gt.txt'
-                out_gt_label_filename = os.path.join(DUMP_DIR, out_gt_label_filename)
+ 
+    	  while not rospy.is_shutdown():
+    
+    		total_correct = 0
+    		total_seen = 0
+    		#fout_out_filelist = open(FLAGS.output_filelist, 'w')
+    		for room_path in ROOM_PATH_LIST:
+        		out_data_label_filename = os.path.basename(room_path)[:-4] + '_pred.txt'
+        		out_data_label_filename = os.path.join(DUMP_DIR, out_data_label_filename)
+        		out_gt_label_filename = os.path.basename(room_path)[:-4] + '_gt.txt'
+        		out_gt_label_filename = os.path.join(DUMP_DIR, out_gt_label_filename)
         		#print(room_path, out_data_label_filename)
-                a, b = eval_one_epoch(sess, ops, room_path, out_data_label_filename, out_gt_label_filename)
-                total_correct += a
-                total_seen += b
-        LOG_FOUT.close()    
+        		a, b = eval_one_epoch(sess, ops, room_path, out_data_label_filename, out_gt_label_filename)
+        		total_correct += a
+        		total_seen += b
+        		#fout_out_filelist.write(out_data_label_filename+'\n')
+    		#fout_out_filelist.close()
+    		#log_string('all room eval accuracy: %f'% (total_correct / float(total_seen)))
+    		#rate.sleep()
+    	  LOG_FOUT.close()
 
 if __name__=='__main__':
     try:
@@ -236,4 +257,4 @@ if __name__=='__main__':
         global array_pcd
         talker()
     except rospy.ROSInterruptException:
-        pass
+		pass

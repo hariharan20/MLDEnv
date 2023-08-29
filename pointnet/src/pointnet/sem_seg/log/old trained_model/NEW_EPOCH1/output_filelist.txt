@@ -1,0 +1,1 @@
+/home/ajit/ur_ws/src/pointnet/src/pointnet/sem_seg/log/dump/Area_1_scene_1_pred.txt
