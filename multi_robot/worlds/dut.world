@@ -781,11 +781,33 @@
         <interpolate_x>1</interpolate_x>
       </animation>
       <script>
-        <trajectory id='0' type='walking' tension='0'>
-<waypoint>
-            <time>0.5</time>
-            <pose>20 20 0 0 -0 0</pose>
+                  <trajectory id='0' type='walking' tension='0'>
+                    <waypoint>
+            <time>1</time>
+            <pose>-1.2 0.26 0 0 0 3.14</pose>
           </waypoint>
+                    <waypoint>
+            <time>2</time>
+            <pose>-2.03 0.26 0 0 -0 3.14</pose>
+          </waypoint>
+                    <waypoint>
+            <time>3</time>
+            <pose>-3 0.26 0 0 -0 3.14</pose>
+          </waypoint>
+                    <waypoint>
+            <time>4</time>
+            <pose>-3 0.26 0 0 -0 0</pose>
+          </waypoint>
+                    <waypoint>
+            <time>5</time>
+            <pose>-2.03 0.26 0 0 -0 0</pose>
+          </waypoint>
+                    <waypoint>
+            <time>6</time>
+            <pose>-1.2 0.26 0 0 -0 0</pose>
+          </waypoint>
+          
+          
         </trajectory>
       </script>
       <link name='actor_pose'>
