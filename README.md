@@ -13,7 +13,7 @@ The Repo Contains three parts:
 ## [1] Robot and Simulation
 The  multi_robot package and the universal_robot repository contains the required simulation stack for two identical manipulators
 
-Before launching the simulation, there are few additional gazebo models used in the project, which are inside the gazebo_models folder, place them inside """"
+Before launching the simulation, there are few additional gazebo models used in the project, which are inside the gazebo_models folder, place them inside `~/.gazebo/models/`
 
 To start with the simulation :
 ```
