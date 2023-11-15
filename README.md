@@ -46,6 +46,8 @@ rosrun programs state_pro.py
 rosrun programs state_pro2.py
 ```
 Once the states are ready for generation, launch the training module implemented with OpenAI gym interface. 
+[The gazebo_linker, gl files are required to change the mode of training, i.e., with humans and without humans. change the import in the trainer scripts from gl - > gazebo_linker for training with humans ]
+
 ```
 cd programs/src/RL_scripts
 python trainer.py
