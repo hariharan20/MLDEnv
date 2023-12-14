@@ -1,5 +1,5 @@
-# Learning_replanning
-This is the repo for the online replanning of collaborative-robotic arms in dynamic environments
+# MLDEnv
+This is the repo for leaning manipulation tasks in 3D dynamic and shared enviornments between collaborative-robotic arms 
 
 First clone the UR10 repo to get the urdf and controllers
 
