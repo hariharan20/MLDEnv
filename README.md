@@ -1,4 +1,4 @@
-# The Repo Contains scripts for training Online Replanning of Collaborative robotic arms in dynamic environment
+### This repo contains scripts for training collaborative robotic arms on task learning in a dynamic environment
 Steps to work with this repository
 ```
 mkdir -p ros_ws/src
