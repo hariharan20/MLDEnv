@@ -1,0 +1,30 @@
+<?xml version="1.0" ?>
+<sdf version="1.5">
+  <model name="bolt">
+  	<static>0</static>
+    <link name="link">
+		<inertial>
+			<mass>0.2</mass>
+		</inertial>
+
+      <visual name="visual">
+        <geometry>
+          <mesh>
+            <uri>model://bolt/meshes/bolt.dae</uri>
+          </mesh>
+        </geometry>
+	<material>
+		<ambient>0.2 0.2 0.2  1</ambient>
+ 	</material>
+      </visual>
+
+      <collision name="collision">
+        <geometry>
+          <mesh>
+            <uri>model://bolt/meshes/bolt.dae</uri>
+          </mesh>
+        </geometry>
+      </collision>
+    </link>
+  </model>
+</sdf>

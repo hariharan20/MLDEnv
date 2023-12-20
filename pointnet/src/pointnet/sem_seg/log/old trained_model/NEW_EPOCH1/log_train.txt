@@ -1,0 +1,11 @@
+Namespace(batch_size=24, decay_rate=0.5, decay_step=300000, gpu=5, learning_rate=0.001, log_dir='log', max_epoch=50, momentum=0.9, num_point=4096, optimizer='adam', test_area=4)
+**** EPOCH 000 ****
+----
+mean loss: 0.368968
+accuracy: 0.888654
+----
+eval mean loss: 0.127102
+eval accuracy: 0.955366
+Model saved in file: log/model.ckpt
+**** EPOCH 001 ****
+----

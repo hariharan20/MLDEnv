@@ -1,0 +1,2 @@
+Namespace(batch_size=1, dump_dir='log', gpu=0, model_path='log/model.ckpt', no_clutter=False, num_point=4096, output_filelist='log/output_filelist.txt', visu=False)
+Model restored.
