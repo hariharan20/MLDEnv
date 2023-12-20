@@ -3,12 +3,17 @@ Steps to work with this repository
 ```
 mkdir -p ros_ws/src
 cd ros_ws/src
-git clone https://github.com/sariahmghames/Learning_replanning.git
+git clone https://github.com/sariahmghames/MLDEnv.git
 ```
+## Pipeline of the Framework
+
 The Repo Contains three parts:
 1) Robot and Simulation
 2) PointNet inference
 3) Reinforcement Learning
+
+![Pipeline](images/pipeline.jpg "Pipeline")
+
 
 ## [1] Robot and Simulation
 The  multi_robot package and the universal_robot repository contains the required simulation stack for two identical manipulators
