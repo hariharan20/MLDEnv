@@ -1,3 +1,4 @@
+
 ### This repo contains scripts for training collaborative robotic arms on task learning in a dynamic environment
 Steps to work with this repository
 ```
@@ -6,6 +7,7 @@ cd ros_ws/src
 git clone https://github.com/sariahmghames/MLDEnv.git
 ```
 ## Pipeline of the Framework
+
 
 The Repo Contains three parts:
 1) Robot and Simulation
