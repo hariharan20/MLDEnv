@@ -1,6 +1,6 @@
 ## MLDEnv
 
-### This repo contains scripts for training collaborative robotic arms on task learning in a dynamic environment
+### This is the repo for training collaborative robotic arms on task learning in a dynamic environment
 Steps to work with this repository
 ```
 mkdir -p ros_ws/src
