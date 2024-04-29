@@ -1,6 +1,6 @@
 ## MLDEnv
 
-### This is the repo for training collaborative robotic arms on task learning in a dynamic environment
+### This is the repo for training collaborative robotic arms in a dynamic environment
 Steps to work with this repository
 ```
 mkdir -p ros_ws/src
@@ -10,7 +10,7 @@ git clone https://github.com/sariahmghames/MLDEnv.git
 ## Pipeline of the Framework
 
 
-The Repo Contains three parts:
+The repo contains three parts:
 1) Robot and Simulation
 2) PointNet inference
 3) Reinforcement Learning
@@ -60,4 +60,13 @@ Once the states are ready for generation, launch the training module implemented
 cd programs/src/RL_scripts
 python trainer.py
 python trainer2.py
+```
+
+if you find this work useful, please refer to the following citation:
+```
+@inproceedings{mldenv2024,
+  title={Learning Manipulation Tasks in Dynamic and Shared 3D Spaces},
+  author={Hariharan Arunachalam, Marc Hanheide, Sariah Mghames},
+  year={2024}
+}
 ```
