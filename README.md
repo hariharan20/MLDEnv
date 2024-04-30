@@ -64,9 +64,12 @@ python trainer2.py
 
 If you find this work useful, please refer to the following citation:
 ```
-@inproceedings{mldenv2024,
-  title={Learning Manipulation Tasks in Dynamic and Shared 3D Spaces},
-  author={Hariharan Arunachalam, Marc Hanheide, Sariah Mghames},
-  year={2024}
+@misc{arunachalam2024learning,
+      title={Learning Manipulation Tasks in Dynamic and Shared 3D Spaces}, 
+      author={Hariharan Arunachalam and Marc Hanheide and Sariah Mghames},
+      year={2024},
+      eprint={2404.17673},
+      archivePrefix={arXiv},
+      primaryClass={cs.LG}
 }
 ```
